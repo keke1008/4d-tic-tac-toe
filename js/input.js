@@ -1,5 +1,5 @@
 /**
- * Input handling for touch/mouse controls
+ * Input handling for touch/mouse controls using Hammer.js
  */
 
 import { CONFIG } from './config.js';
@@ -13,34 +13,143 @@ export class InputController extends EventTarget {
         this.horizontalRotationAxis = CONFIG.DEFAULT_HORIZONTAL_AXIS;
         this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
 
-        // Drag/swipe state (single finger)
-        this.isDragging = false;
-        this.dragStartPos = { x: 0, y: 0 };
+        // Gesture state
         this.swipeDirection = null; // 'horizontal' or 'vertical'
+        this.lastPinchScale = 1;
 
-        // Multi-touch state (two-finger gestures)
-        this.pointers = new Map(); // pointer ID -> { x, y }
-        this.lastPinchDistance = null;
-        this.lastTwoFingerCenter = null;
-
-        this.setupEventListeners();
+        this.setupHammer();
+        this.setupRotationToggles();
+        this.setupActionButtons();
     }
 
     /**
-     * Setup all event listeners
+     * Setup Hammer.js for gesture recognition
      */
-    setupEventListeners() {
-        // Pointer events for unified touch/mouse handling
-        this.canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-        this.canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
-        this.canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
-        this.canvas.addEventListener('click', (e) => this.onClick(e));
+    setupHammer() {
+        // Create Hammer instance
+        this.hammer = new Hammer.Manager(this.canvas);
 
-        // Rotation axis toggles
-        this.setupRotationToggles();
+        // Single-tap recognizer
+        const tap = new Hammer.Tap({
+            event: 'tap',
+            pointers: 1,
+            threshold: 10,
+            time: 300
+        });
 
-        // Action buttons
-        this.setupActionButtons();
+        // Single-finger pan recognizer (for rotation)
+        const singlePan = new Hammer.Pan({
+            event: 'singlepan',
+            pointers: 1,
+            threshold: 5,
+            direction: Hammer.DIRECTION_ALL
+        });
+
+        // Two-finger pan recognizer (for camera movement)
+        const doublePan = new Hammer.Pan({
+            event: 'doublepan',
+            pointers: 2,
+            threshold: 5,
+            direction: Hammer.DIRECTION_ALL
+        });
+
+        // Pinch recognizer (for zoom)
+        const pinch = new Hammer.Pinch({
+            event: 'pinch',
+            pointers: 2,
+            threshold: 0.1
+        });
+
+        // Add recognizers to manager
+        this.hammer.add([tap, singlePan, doublePan, pinch]);
+
+        // Allow pinch and pan to be recognized simultaneously
+        pinch.recognizeWith([doublePan]);
+
+        // Setup gesture event listeners
+        this.setupGestureListeners();
+    }
+
+    /**
+     * Setup Hammer.js gesture event listeners
+     */
+    setupGestureListeners() {
+        // Tap gesture - for placing markers
+        this.hammer.on('tap', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = ((e.center.x - rect.left) / rect.width) * 2 - 1;
+            const mouseY = -((e.center.y - rect.top) / rect.height) * 2 + 1;
+
+            this.dispatchEvent(new CustomEvent('cellClick', {
+                detail: { mouseX, mouseY }
+            }));
+        });
+
+        // Single-finger pan - for 4D rotation
+        this.hammer.on('singlepanstart', () => {
+            this.swipeDirection = null;
+        });
+
+        this.hammer.on('singlepan', (e) => {
+            // Determine swipe direction on first significant movement
+            if (!this.swipeDirection) {
+                const absDeltaX = Math.abs(e.deltaX);
+                const absDeltaY = Math.abs(e.deltaY);
+
+                if (absDeltaX > CONFIG.SWIPE_THRESHOLD || absDeltaY > CONFIG.SWIPE_THRESHOLD) {
+                    this.swipeDirection = absDeltaX > absDeltaY ? 'horizontal' : 'vertical';
+                }
+            }
+
+            // Emit rotation event based on swipe direction
+            if (this.swipeDirection === 'horizontal') {
+                this.dispatchEvent(new CustomEvent('rotate', {
+                    detail: {
+                        axis: this.horizontalRotationAxis,
+                        delta: e.velocityX * CONFIG.ROTATION_SENSITIVITY * 10
+                    }
+                }));
+            } else if (this.swipeDirection === 'vertical') {
+                this.dispatchEvent(new CustomEvent('rotate', {
+                    detail: {
+                        axis: this.verticalRotationAxis,
+                        delta: -e.velocityY * CONFIG.ROTATION_SENSITIVITY * 10
+                    }
+                }));
+            }
+        });
+
+        this.hammer.on('singlepanend', () => {
+            this.swipeDirection = null;
+        });
+
+        // Two-finger pan - for camera movement
+        this.hammer.on('doublepan', (e) => {
+            this.dispatchEvent(new CustomEvent('cameraPan', {
+                detail: {
+                    deltaX: e.velocityX * 0.3,
+                    deltaY: -e.velocityY * 0.3
+                }
+            }));
+        });
+
+        // Pinch - for camera zoom
+        this.hammer.on('pinchstart', (e) => {
+            this.lastPinchScale = e.scale;
+        });
+
+        this.hammer.on('pinch', (e) => {
+            const scaleDelta = e.scale - this.lastPinchScale;
+            this.lastPinchScale = e.scale;
+
+            this.dispatchEvent(new CustomEvent('cameraPinch', {
+                detail: { delta: -scaleDelta * 3 } // Negative for intuitive zoom
+            }));
+        });
+
+        this.hammer.on('pinchend', () => {
+            this.lastPinchScale = 1;
+        });
     }
 
     /**
@@ -88,194 +197,6 @@ export class InputController extends EventTarget {
     }
 
     /**
-     * Handle pointer down event
-     * @param {PointerEvent} e
-     */
-    onPointerDown(e) {
-        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-        if (this.pointers.size === 1) {
-            // Single finger - setup for rotation
-            this.isDragging = true;
-            this.dragStartPos = { x: e.clientX, y: e.clientY };
-            this.swipeDirection = null;
-        } else if (this.pointers.size === 2) {
-            // Two fingers - setup for camera gestures
-            this.isDragging = false; // Disable rotation
-            this.initializeTwoFingerGesture();
-        }
-    }
-
-    /**
-     * Initialize two-finger gesture tracking
-     */
-    initializeTwoFingerGesture() {
-        const pointerArray = Array.from(this.pointers.values());
-        if (pointerArray.length !== 2) return;
-
-        const [p1, p2] = pointerArray;
-
-        // Calculate initial pinch distance
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        this.lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
-
-        // Calculate initial center point
-        this.lastTwoFingerCenter = {
-            x: (p1.x + p2.x) / 2,
-            y: (p1.y + p2.y) / 2
-        };
-    }
-
-    /**
-     * Handle pointer move event
-     * @param {PointerEvent} e
-     */
-    onPointerMove(e) {
-        // Update pointer position
-        if (this.pointers.has(e.pointerId)) {
-            this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        }
-
-        if (this.pointers.size === 2) {
-            // Two-finger gestures (camera control)
-            this.handleTwoFingerGesture();
-        } else if (this.pointers.size === 1 && this.isDragging) {
-            // Single-finger rotation
-            this.handleSingleFingerRotation(e);
-        }
-    }
-
-    /**
-     * Handle single-finger rotation gesture
-     * @param {PointerEvent} e
-     */
-    handleSingleFingerRotation(e) {
-        const deltaX = e.clientX - this.dragStartPos.x;
-        const deltaY = e.clientY - this.dragStartPos.y;
-
-        // Determine swipe direction on first significant movement
-        if (!this.swipeDirection) {
-            const absDeltaX = Math.abs(deltaX);
-            const absDeltaY = Math.abs(deltaY);
-
-            if (absDeltaX > CONFIG.SWIPE_THRESHOLD || absDeltaY > CONFIG.SWIPE_THRESHOLD) {
-                this.swipeDirection = absDeltaX > absDeltaY ? 'horizontal' : 'vertical';
-            }
-        }
-
-        // Emit rotation event based on swipe direction
-        if (this.swipeDirection === 'horizontal') {
-            this.dispatchEvent(new CustomEvent('rotate', {
-                detail: {
-                    axis: this.horizontalRotationAxis,
-                    delta: deltaX * CONFIG.ROTATION_SENSITIVITY
-                }
-            }));
-        } else if (this.swipeDirection === 'vertical') {
-            this.dispatchEvent(new CustomEvent('rotate', {
-                detail: {
-                    axis: this.verticalRotationAxis,
-                    delta: -deltaY * CONFIG.ROTATION_SENSITIVITY
-                }
-            }));
-        }
-
-        this.dragStartPos = { x: e.clientX, y: e.clientY };
-    }
-
-    /**
-     * Handle two-finger pan and pinch gestures
-     */
-    handleTwoFingerGesture() {
-        const pointerArray = Array.from(this.pointers.values());
-        if (pointerArray.length !== 2) return;
-
-        const [p1, p2] = pointerArray;
-
-        // Calculate current pinch distance
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const currentDistance = Math.sqrt(dx * dx + dy * dy);
-
-        // Calculate current center point
-        const currentCenter = {
-            x: (p1.x + p2.x) / 2,
-            y: (p1.y + p2.y) / 2
-        };
-
-        // Pinch gesture (zoom)
-        if (this.lastPinchDistance !== null) {
-            const distanceDelta = currentDistance - this.lastPinchDistance;
-            if (Math.abs(distanceDelta) > 1) { // Threshold to avoid jitter
-                this.dispatchEvent(new CustomEvent('cameraPinch', {
-                    detail: { delta: distanceDelta * 0.02 } // Scale factor
-                }));
-            }
-        }
-
-        // Pan gesture (camera movement)
-        if (this.lastTwoFingerCenter !== null) {
-            const panDeltaX = currentCenter.x - this.lastTwoFingerCenter.x;
-            const panDeltaY = currentCenter.y - this.lastTwoFingerCenter.y;
-
-            if (Math.abs(panDeltaX) > 1 || Math.abs(panDeltaY) > 1) {
-                this.dispatchEvent(new CustomEvent('cameraPan', {
-                    detail: {
-                        deltaX: panDeltaX * 0.01, // Scale factors
-                        deltaY: -panDeltaY * 0.01
-                    }
-                }));
-            }
-        }
-
-        // Update last values
-        this.lastPinchDistance = currentDistance;
-        this.lastTwoFingerCenter = currentCenter;
-    }
-
-    /**
-     * Handle pointer up event
-     * @param {PointerEvent} e
-     */
-    onPointerUp(e) {
-        this.pointers.delete(e.pointerId);
-
-        if (this.pointers.size === 0) {
-            // All fingers lifted
-            this.isDragging = false;
-            this.swipeDirection = null;
-            this.lastPinchDistance = null;
-            this.lastTwoFingerCenter = null;
-        } else if (this.pointers.size === 1) {
-            // Back to single finger - reinitialize rotation
-            const remaining = Array.from(this.pointers.values())[0];
-            this.isDragging = true;
-            this.dragStartPos = { x: remaining.x, y: remaining.y };
-            this.swipeDirection = null;
-            this.lastPinchDistance = null;
-            this.lastTwoFingerCenter = null;
-        } else if (this.pointers.size === 2) {
-            // Still two fingers - reinitialize two-finger gesture
-            this.initializeTwoFingerGesture();
-        }
-    }
-
-    /**
-     * Handle click event
-     * @param {MouseEvent} e
-     */
-    onClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-        this.dispatchEvent(new CustomEvent('cellClick', {
-            detail: { mouseX, mouseY }
-        }));
-    }
-
-    /**
      * Update auto-rotate button text
      * @param {boolean} autoRotate
      */
@@ -283,6 +204,15 @@ export class InputController extends EventTarget {
         const btn = document.getElementById('auto-rotate-btn');
         if (btn) {
             btn.textContent = autoRotate ? '⏸ 自動回転' : '▶ 自動回転';
+        }
+    }
+
+    /**
+     * Cleanup Hammer.js instance
+     */
+    destroy() {
+        if (this.hammer) {
+            this.hammer.destroy();
         }
     }
 }
