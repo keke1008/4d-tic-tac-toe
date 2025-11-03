@@ -91,14 +91,14 @@ class Game {
                 // Check win condition
                 if (this.gameBoard.checkWin(x, y, z, w)) {
                     this.gameBoard.setGameOver(currentPlayer);
-                    this.updateStatus(`🎉 プレイヤー ${currentPlayer} の勝利！`);
+                    this.updateStatus(null, true); // Victory!
                 } else if (this.gameBoard.isBoardFull()) {
                     this.gameBoard.setGameOver(null);
                     this.updateStatus('引き分け！');
                 } else {
                     // Switch player
                     this.gameBoard.switchPlayer();
-                    this.updateStatus(`プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`);
+                    this.updateStatus(); // Normal turn
                 }
             }
         } else {
@@ -114,7 +114,7 @@ class Game {
     reset() {
         this.gameBoard.reset();
         this.renderer.clearMarkers();
-        this.updateStatus(`プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`);
+        this.updateStatus(); // Reset to normal turn display
     }
 
     /**
@@ -126,17 +126,41 @@ class Game {
     }
 
     /**
-     * Update status display
-     * @param {string} text - Status text
+     * Update status display with player color and marker
+     * @param {string} message - Status message (optional)
+     * @param {boolean} isVictory - Whether this is a victory message
      */
-    updateStatus(text) {
+    updateStatus(message = null, isVictory = false) {
         const statusElement = document.getElementById('status');
-        if (statusElement) {
-            if (text) {
-                statusElement.textContent = text;
-            } else {
-                statusElement.textContent = `プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`;
-            }
+        const markerElement = document.getElementById('player-marker');
+        const textElement = document.getElementById('status-text');
+
+        if (!statusElement || !markerElement || !textElement) return;
+
+        const currentPlayer = this.gameBoard.getCurrentPlayer();
+
+        // Update player marker color
+        markerElement.className = currentPlayer === 'X' ? 'player-x' : 'player-o';
+
+        if (isVictory) {
+            // Victory display
+            statusElement.classList.add('victory');
+            textElement.textContent = ' の勝利！🎉';
+        } else if (message === '引き分け！') {
+            // Draw display
+            statusElement.classList.remove('victory');
+            markerElement.style.display = 'none';
+            textElement.textContent = '引き分け！';
+        } else if (message && message.includes('もう一度クリックで確定')) {
+            // Preview confirmation message
+            statusElement.classList.remove('victory');
+            markerElement.style.display = 'inline-block';
+            textElement.textContent = ' もう一度クリックで確定';
+        } else {
+            // Normal turn display
+            statusElement.classList.remove('victory');
+            markerElement.style.display = 'inline-block';
+            textElement.textContent = ' の番です';
         }
     }
 
