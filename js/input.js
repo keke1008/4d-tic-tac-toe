@@ -14,7 +14,6 @@ export class InputController extends EventTarget {
         this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
 
         // Gesture state
-        this.swipeDirection = null; // 'horizontal' or 'vertical'
         this.lastPinchScale = 1;
         this.lastPanDelta = { x: 0, y: 0 };
 
@@ -91,13 +90,12 @@ export class InputController extends EventTarget {
             }));
         });
 
-        // Single-finger pan - for 4D rotation
+        // Single-finger pan - for 4D rotation (supports diagonal drag)
         this.hammer.on('singlepanstart', (e) => {
             // Don't start rotation if Shift key is pressed (used for camera pan)
             if (e.srcEvent && e.srcEvent.shiftKey) {
                 return;
             }
-            this.swipeDirection = null;
         });
 
         this.hammer.on('singlepan', (e) => {
@@ -106,25 +104,21 @@ export class InputController extends EventTarget {
                 return;
             }
 
-            // Determine swipe direction on first significant movement
-            if (!this.swipeDirection) {
-                const absDeltaX = Math.abs(e.deltaX);
-                const absDeltaY = Math.abs(e.deltaY);
+            const absDeltaX = Math.abs(e.deltaX);
+            const absDeltaY = Math.abs(e.deltaY);
 
-                if (absDeltaX > CONFIG.SWIPE_THRESHOLD || absDeltaY > CONFIG.SWIPE_THRESHOLD) {
-                    this.swipeDirection = absDeltaX > absDeltaY ? 'horizontal' : 'vertical';
-                }
-            }
-
-            // Emit rotation event based on swipe direction
-            if (this.swipeDirection === 'horizontal') {
+            // Apply horizontal rotation if there's horizontal movement
+            if (absDeltaX > CONFIG.SWIPE_THRESHOLD) {
                 this.dispatchEvent(new CustomEvent('rotate', {
                     detail: {
                         axis: this.horizontalRotationAxis,
                         delta: e.velocityX * CONFIG.ROTATION_SENSITIVITY * 10
                     }
                 }));
-            } else if (this.swipeDirection === 'vertical') {
+            }
+
+            // Apply vertical rotation if there's vertical movement
+            if (absDeltaY > CONFIG.SWIPE_THRESHOLD) {
                 this.dispatchEvent(new CustomEvent('rotate', {
                     detail: {
                         axis: this.verticalRotationAxis,
@@ -135,7 +129,7 @@ export class InputController extends EventTarget {
         });
 
         this.hammer.on('singlepanend', () => {
-            this.swipeDirection = null;
+            // No state to clear for diagonal drag
         });
 
         // Two-finger pan - for camera movement
