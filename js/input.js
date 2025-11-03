@@ -138,8 +138,8 @@ export class InputController extends EventTarget {
 
             this.dispatchEvent(new CustomEvent('cameraPan', {
                 detail: {
-                    deltaX: incrementalDeltaX * 0.01,
-                    deltaY: -incrementalDeltaY * 0.01
+                    deltaX: -incrementalDeltaX * 0.01,
+                    deltaY: incrementalDeltaY * 0.01
                 }
             }));
         });
