@@ -80,6 +80,34 @@ export class InputController extends EventTarget {
                 this.dispatchEvent(new CustomEvent('toggleAutoRotate'));
             });
         }
+
+        // Camera distance control
+        const cameraDistanceSlider = document.getElementById('camera-distance');
+        const cameraDistanceValue = document.getElementById('camera-distance-value');
+        if (cameraDistanceSlider && cameraDistanceValue) {
+            cameraDistanceSlider.addEventListener('input', (e) => {
+                const distance = parseFloat(e.target.value);
+                cameraDistanceValue.textContent = distance;
+                this.dispatchEvent(new CustomEvent('cameraDistanceChange', {
+                    detail: { distance }
+                }));
+            });
+        }
+
+        // Rotation center controls
+        ['x', 'y', 'z'].forEach(axis => {
+            const slider = document.getElementById(`rotation-center-${axis}`);
+            const valueDisplay = document.getElementById(`rotation-center-${axis}-value`);
+            if (slider && valueDisplay) {
+                slider.addEventListener('input', (e) => {
+                    const offset = parseFloat(e.target.value);
+                    valueDisplay.textContent = offset;
+                    this.dispatchEvent(new CustomEvent('rotationCenterChange', {
+                        detail: { axis, offset }
+                    }));
+                });
+            }
+        });
     }
 
     /**

@@ -50,6 +50,16 @@ class Game {
         this.inputController.addEventListener('toggleAutoRotate', () => {
             this.toggleAutoRotate();
         });
+
+        // Camera distance change
+        this.inputController.addEventListener('cameraDistanceChange', (e) => {
+            this.renderer.setCameraDistance(e.detail.distance);
+        });
+
+        // Rotation center change
+        this.inputController.addEventListener('rotationCenterChange', (e) => {
+            this.renderer.setRotationCenter(e.detail.axis, e.detail.offset);
+        });
     }
 
     /**
