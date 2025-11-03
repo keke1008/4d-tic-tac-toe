@@ -3,10 +3,11 @@
  */
 
 import { CONFIG, FOUR_D_AXES } from './config.js';
-import { rotate4D, project4Dto3D, getHueFromW, getScaleFromW, getOpacityFromW } from './math4d.js';
+import { rotate4D, project4Dto3D, getScaleFromW } from './math4d.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
 import { MarkerRenderer } from './rendering/MarkerRenderer.js';
+import { CellAppearanceManager } from './rendering/CellAppearanceManager.js';
 import { GridBuilder } from './grid/GridBuilder.js';
 import { ConnectionManager } from './grid/ConnectionManager.js';
 
@@ -21,8 +22,9 @@ export class GridRenderer {
         this.hoveredCell = null;
         this.previewCell = null;
 
-        // Initialize marker renderer
+        // Initialize renderers and managers
         this.markerRenderer = new MarkerRenderer();
+        this.appearanceManager = new CellAppearanceManager();
 
         this.setupThreeJS();
         this.createGrid();
@@ -138,53 +140,24 @@ export class GridRenderer {
     }
 
     /**
-     * Update all cell positions based on current rotation
+     * Update all cell positions and appearance based on current rotation
      */
     updateCellPositions() {
         this.cells.forEach(cell => {
             const rotated = rotate4D(cell.pos4d, this.rotations);
             const [x, y, z, w] = project4Dto3D(rotated);
 
+            // Update position
             cell.group.position.set(x, y, z);
 
             // Scale based on W coordinate for depth perception
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
-            // Determine cell state and color
+            // Update appearance (delegates to CellAppearanceManager)
             const isHovered = cell === this.hoveredCell;
             const isPreview = cell === this.previewCell;
-
-            if (cell.marker) {
-                // Fully selected: player color with high opacity (set by MarkerRenderer)
-                cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
-            } else if (isPreview) {
-                // Preview selection: show player color at reduced opacity
-                const currentPlayer = this.previewCell.previewPlayer || 'X';
-                const color = currentPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
-                cell.wireframe.material.color.setHex(color);
-                cell.wireframe.material.opacity = CONFIG.PREVIEW_CELL_OPACITY;
-            } else {
-                // Unselected: W-based color for depth visualization
-                const hue = getHueFromW(w);
-                const wFactor = (w + 2) / 4; // Normalize W to 0-1 range
-                let lightness = CONFIG.UNSELECTED_CELL_LIGHTNESS;
-                let opacity = CONFIG.UNSELECTED_CELL_OPACITY_MIN +
-                              wFactor * CONFIG.UNSELECTED_CELL_OPACITY_RANGE;
-
-                // Boost lightness and opacity when hovered
-                if (isHovered) {
-                    lightness += CONFIG.HOVER_CELL_LIGHTNESS_BOOST;
-                    opacity += CONFIG.HOVER_CELL_OPACITY_BOOST;
-                }
-
-                cell.wireframe.material.color.setHSL(
-                    hue,
-                    CONFIG.UNSELECTED_CELL_SATURATION,
-                    lightness
-                );
-                cell.wireframe.material.opacity = opacity;
-            }
+            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview);
         });
     }
 
