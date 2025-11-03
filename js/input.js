@@ -164,20 +164,23 @@ export class InputController extends EventTarget {
 
         // Pinch - for camera zoom
         this.hammer.on('pinchstart', (e) => {
-            // Always start from 1 (Hammer.js uses 1 as the starting scale)
-            this.lastPinchScale = 1;
+            // Use current scale as baseline (e.scale at start)
+            this.lastPinchScale = e.scale;
         });
 
         this.hammer.on('pinch', (e) => {
+            // Calculate delta from last recorded scale
             const scaleDelta = e.scale - this.lastPinchScale;
             this.lastPinchScale = e.scale;
 
+            // Apply zoom with appropriate sensitivity
             this.dispatchEvent(new CustomEvent('cameraPinch', {
-                detail: { delta: scaleDelta * 3 }
+                detail: { delta: scaleDelta * 5 }  // Increased multiplier for better responsiveness
             }));
         });
 
         this.hammer.on('pinchend', () => {
+            // Reset to default
             this.lastPinchScale = 1;
         });
     }
