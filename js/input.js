@@ -13,10 +13,15 @@ export class InputController extends EventTarget {
         this.horizontalRotationAxis = CONFIG.DEFAULT_HORIZONTAL_AXIS;
         this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
 
-        // Drag/swipe state
+        // Drag/swipe state (single finger)
         this.isDragging = false;
         this.dragStartPos = { x: 0, y: 0 };
         this.swipeDirection = null; // 'horizontal' or 'vertical'
+
+        // Multi-touch state (two-finger gestures)
+        this.pointers = new Map(); // pointer ID -> { x, y }
+        this.lastPinchDistance = null;
+        this.lastTwoFingerCenter = null;
 
         this.setupEventListeners();
     }
@@ -80,34 +85,6 @@ export class InputController extends EventTarget {
                 this.dispatchEvent(new CustomEvent('toggleAutoRotate'));
             });
         }
-
-        // Camera distance control
-        const cameraDistanceSlider = document.getElementById('camera-distance');
-        const cameraDistanceValue = document.getElementById('camera-distance-value');
-        if (cameraDistanceSlider && cameraDistanceValue) {
-            cameraDistanceSlider.addEventListener('input', (e) => {
-                const distance = parseFloat(e.target.value);
-                cameraDistanceValue.textContent = distance;
-                this.dispatchEvent(new CustomEvent('cameraDistanceChange', {
-                    detail: { distance }
-                }));
-            });
-        }
-
-        // Rotation center controls
-        ['x', 'y', 'z'].forEach(axis => {
-            const slider = document.getElementById(`rotation-center-${axis}`);
-            const valueDisplay = document.getElementById(`rotation-center-${axis}-value`);
-            if (slider && valueDisplay) {
-                slider.addEventListener('input', (e) => {
-                    const offset = parseFloat(e.target.value);
-                    valueDisplay.textContent = offset;
-                    this.dispatchEvent(new CustomEvent('rotationCenterChange', {
-                        detail: { axis, offset }
-                    }));
-                });
-            }
-        });
     }
 
     /**
@@ -115,9 +92,39 @@ export class InputController extends EventTarget {
      * @param {PointerEvent} e
      */
     onPointerDown(e) {
-        this.isDragging = true;
-        this.dragStartPos = { x: e.clientX, y: e.clientY };
-        this.swipeDirection = null;
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (this.pointers.size === 1) {
+            // Single finger - setup for rotation
+            this.isDragging = true;
+            this.dragStartPos = { x: e.clientX, y: e.clientY };
+            this.swipeDirection = null;
+        } else if (this.pointers.size === 2) {
+            // Two fingers - setup for camera gestures
+            this.isDragging = false; // Disable rotation
+            this.initializeTwoFingerGesture();
+        }
+    }
+
+    /**
+     * Initialize two-finger gesture tracking
+     */
+    initializeTwoFingerGesture() {
+        const pointerArray = Array.from(this.pointers.values());
+        if (pointerArray.length !== 2) return;
+
+        const [p1, p2] = pointerArray;
+
+        // Calculate initial pinch distance
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        this.lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate initial center point
+        this.lastTwoFingerCenter = {
+            x: (p1.x + p2.x) / 2,
+            y: (p1.y + p2.y) / 2
+        };
     }
 
     /**
@@ -125,8 +132,25 @@ export class InputController extends EventTarget {
      * @param {PointerEvent} e
      */
     onPointerMove(e) {
-        if (!this.isDragging) return;
+        // Update pointer position
+        if (this.pointers.has(e.pointerId)) {
+            this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
 
+        if (this.pointers.size === 2) {
+            // Two-finger gestures (camera control)
+            this.handleTwoFingerGesture();
+        } else if (this.pointers.size === 1 && this.isDragging) {
+            // Single-finger rotation
+            this.handleSingleFingerRotation(e);
+        }
+    }
+
+    /**
+     * Handle single-finger rotation gesture
+     * @param {PointerEvent} e
+     */
+    handleSingleFingerRotation(e) {
         const deltaX = e.clientX - this.dragStartPos.x;
         const deltaY = e.clientY - this.dragStartPos.y;
 
@@ -161,12 +185,80 @@ export class InputController extends EventTarget {
     }
 
     /**
+     * Handle two-finger pan and pinch gestures
+     */
+    handleTwoFingerGesture() {
+        const pointerArray = Array.from(this.pointers.values());
+        if (pointerArray.length !== 2) return;
+
+        const [p1, p2] = pointerArray;
+
+        // Calculate current pinch distance
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate current center point
+        const currentCenter = {
+            x: (p1.x + p2.x) / 2,
+            y: (p1.y + p2.y) / 2
+        };
+
+        // Pinch gesture (zoom)
+        if (this.lastPinchDistance !== null) {
+            const distanceDelta = currentDistance - this.lastPinchDistance;
+            if (Math.abs(distanceDelta) > 1) { // Threshold to avoid jitter
+                this.dispatchEvent(new CustomEvent('cameraPinch', {
+                    detail: { delta: distanceDelta * 0.02 } // Scale factor
+                }));
+            }
+        }
+
+        // Pan gesture (camera movement)
+        if (this.lastTwoFingerCenter !== null) {
+            const panDeltaX = currentCenter.x - this.lastTwoFingerCenter.x;
+            const panDeltaY = currentCenter.y - this.lastTwoFingerCenter.y;
+
+            if (Math.abs(panDeltaX) > 1 || Math.abs(panDeltaY) > 1) {
+                this.dispatchEvent(new CustomEvent('cameraPan', {
+                    detail: {
+                        deltaX: panDeltaX * 0.01, // Scale factors
+                        deltaY: -panDeltaY * 0.01
+                    }
+                }));
+            }
+        }
+
+        // Update last values
+        this.lastPinchDistance = currentDistance;
+        this.lastTwoFingerCenter = currentCenter;
+    }
+
+    /**
      * Handle pointer up event
      * @param {PointerEvent} e
      */
     onPointerUp(e) {
-        this.isDragging = false;
-        this.swipeDirection = null;
+        this.pointers.delete(e.pointerId);
+
+        if (this.pointers.size === 0) {
+            // All fingers lifted
+            this.isDragging = false;
+            this.swipeDirection = null;
+            this.lastPinchDistance = null;
+            this.lastTwoFingerCenter = null;
+        } else if (this.pointers.size === 1) {
+            // Back to single finger - reinitialize rotation
+            const remaining = Array.from(this.pointers.values())[0];
+            this.isDragging = true;
+            this.dragStartPos = { x: remaining.x, y: remaining.y };
+            this.swipeDirection = null;
+            this.lastPinchDistance = null;
+            this.lastTwoFingerCenter = null;
+        } else if (this.pointers.size === 2) {
+            // Still two fingers - reinitialize two-finger gesture
+            this.initializeTwoFingerGesture();
+        }
     }
 
     /**
