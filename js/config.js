@@ -42,6 +42,7 @@ export const CONFIG = {
 
     // Selected cell appearance - Uses player colors
     SELECTED_CELL_OPACITY: 0.9,        // Bright and prominent
+    SELECTED_CELL_LINE_WIDTH: 4,       // Thicker lines for selected cells
 
     // Hover state - Cells brighten when mouse hovers over them
     HOVER_CELL_LIGHTNESS_BOOST: 0.15,  // Add to lightness when hovering
