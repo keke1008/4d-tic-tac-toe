@@ -12,6 +12,7 @@ export class GridRenderer {
         this.cellMeshes = [];
         this.connectionLines = [];
         this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
+        this.rotationCenter = { x: 0, y: 0, z: 0 };
 
         this.setupThreeJS();
         this.createGrid();
@@ -109,12 +110,13 @@ export class GridRenderer {
             CONFIG.CELL_SIZE
         );
 
-        // Wireframe edges
+        // Wireframe edges - Enhanced visibility
         const edges = new THREE.EdgesGeometry(geometry);
         const material = new THREE.LineBasicMaterial({
             color: 0x00ffff,
             transparent: true,
-            opacity: 0.3
+            opacity: 0.3,
+            linewidth: CONFIG.CELL_LINE_WIDTH  // Thicker lines
         });
         const wireframe = new THREE.LineSegments(edges, material);
         cell.group.add(wireframe);
@@ -208,7 +210,8 @@ export class GridRenderer {
         const material = new THREE.LineBasicMaterial({
             color: 0x4444ff,
             transparent: true,
-            opacity: 0.15
+            opacity: 0.15,
+            linewidth: CONFIG.CONNECTION_LINE_WIDTH  // Thicker connection lines
         });
 
         const line = new THREE.Line(geometry, material);
@@ -228,15 +231,22 @@ export class GridRenderer {
 
             cell.group.position.set(x, y, z);
 
-            // Update color based on W coordinate
+            // Update color based on W coordinate - More vibrant colors
             const hue = getHueFromW(w);
             const opacity = getOpacityFromW(w);
             const scale = getScaleFromW(w);
 
             // Only update color if no marker is placed
             if (!cell.marker) {
-                cell.wireframe.material.color.setHSL(hue, 1, 0.5);
+                cell.wireframe.material.color.setHSL(
+                    hue,
+                    CONFIG.SATURATION,
+                    CONFIG.LIGHTNESS
+                );
                 cell.wireframe.material.opacity = opacity;
+            } else {
+                // Marked cells have higher opacity and thicker lines
+                cell.wireframe.material.opacity = CONFIG.MARKED_CELL_OPACITY;
             }
 
             cell.group.scale.setScalar(scale);
@@ -270,7 +280,7 @@ export class GridRenderer {
             const wFactor = (avgW + 2) / 4;
             const opacity = CONFIG.CONNECTION_OPACITY_MIN + wFactor * CONFIG.CONNECTION_OPACITY_RANGE;
 
-            line.material.color.setHSL(hue, 0.7, 0.4);
+            line.material.color.setHSL(hue, CONFIG.SATURATION * 0.8, CONFIG.LIGHTNESS * 0.7);
             line.material.opacity = opacity;
         });
     }
@@ -347,6 +357,24 @@ export class GridRenderer {
      */
     setRotations(rotations) {
         this.rotations = { ...rotations };
+    }
+
+    /**
+     * Set camera distance
+     * @param {number} distance - Camera distance from origin
+     */
+    setCameraDistance(distance) {
+        this.camera.position.z = distance;
+    }
+
+    /**
+     * Set rotation center offset
+     * @param {string} axis - 'x', 'y', or 'z'
+     * @param {number} offset - Offset value
+     */
+    setRotationCenter(axis, offset) {
+        this.rotationCenter[axis] = offset;
+        this.camera.lookAt(this.rotationCenter.x, this.rotationCenter.y, this.rotationCenter.z);
     }
 
     /**
