@@ -71,14 +71,33 @@ body {
     border-width: 4px;
 }
 
-@keyframes victoryPulse {
+#status.victory.player-x-turn {
+    animation: victoryPulseX 1s ease-in-out infinite;
+}
+
+#status.victory.player-o-turn {
+    animation: victoryPulseO 1s ease-in-out infinite;
+}
+
+@keyframes victoryPulseX {
     0%, 100% {
         transform: scale(1);
-        box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        box-shadow: 0 0 30px rgba(255, 0, 255, 0.6);
     }
     50% {
         transform: scale(1.05);
-        box-shadow: 0 0 40px rgba(255, 0, 255, 0.8);
+        box-shadow: 0 0 50px rgba(255, 0, 255, 1);
+    }
+}
+
+@keyframes victoryPulseO {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 50px rgba(0, 255, 255, 1);
     }
 }
 
