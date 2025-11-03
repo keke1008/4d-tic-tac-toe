@@ -2,7 +2,7 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
-export const VERSION = '1.7.0';
+export const VERSION = '1.8.0';
 
 export const CONFIG = {
     // Game settings
