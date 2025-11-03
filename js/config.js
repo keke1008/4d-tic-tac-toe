@@ -28,9 +28,13 @@ export const CONFIG = {
     CELL_LINE_WIDTH: 2,           // Thicker cell wireframes
     CONNECTION_LINE_WIDTH: 1.5,    // Thicker connection lines
 
-    // Unselected cell appearance - Unified color for all
-    UNSELECTED_CELL_COLOR: 0x4a4a6a,  // Neutral gray-blue
-    UNSELECTED_CELL_OPACITY: 0.25,     // Visible but subtle
+    // Unselected cell appearance - W-based colors, subtle and not too prominent
+    HUE_OFFSET: 0.15,              // red-orange hue base
+    HUE_RANGE: 0.6,                // color spectrum range
+    UNSELECTED_CELL_SATURATION: 0.4,   // Low saturation - subdued colors
+    UNSELECTED_CELL_LIGHTNESS: 0.25,   // Low lightness - dark and subtle
+    UNSELECTED_CELL_OPACITY_MIN: 0.2,  // Minimum opacity
+    UNSELECTED_CELL_OPACITY_RANGE: 0.15, // Opacity variation range
 
     // Unselected grid appearance - Unified color for all
     UNSELECTED_GRID_COLOR: 0x5a5a7a,   // Slightly brighter gray-blue

@@ -80,9 +80,10 @@ export class MarkerRenderer {
             cell.player = null;      // Clear player tracking
         }
 
-        // Reset wireframe appearance to unselected color
-        cell.wireframe.material.color.setHex(CONFIG.UNSELECTED_CELL_COLOR);
-        cell.wireframe.material.opacity = CONFIG.UNSELECTED_CELL_OPACITY;
+        // Color will be reset to W-based color on next updateCellPositions() call
+        // Set a temporary neutral color until next frame
+        cell.wireframe.material.color.setHex(0x4a4a6a);
+        cell.wireframe.material.opacity = 0.25;
     }
 
     /**

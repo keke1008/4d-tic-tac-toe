@@ -121,11 +121,20 @@ export class GridRenderer {
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
-            // Color and opacity: unselected cells use unified color, selected cells use player color
+            // Color and opacity: unselected cells use W-based colors, selected cells use player color
             if (!cell.marker) {
-                // Unselected: unified color for all cells
-                cell.wireframe.material.color.setHex(CONFIG.UNSELECTED_CELL_COLOR);
-                cell.wireframe.material.opacity = CONFIG.UNSELECTED_CELL_OPACITY;
+                // Unselected: W-based color for depth visualization (subtle)
+                const hue = getHueFromW(w);
+                const wFactor = (w + 2) / 4; // Normalize W to 0-1 range
+                const opacity = CONFIG.UNSELECTED_CELL_OPACITY_MIN +
+                              wFactor * CONFIG.UNSELECTED_CELL_OPACITY_RANGE;
+
+                cell.wireframe.material.color.setHSL(
+                    hue,
+                    CONFIG.UNSELECTED_CELL_SATURATION,
+                    CONFIG.UNSELECTED_CELL_LIGHTNESS
+                );
+                cell.wireframe.material.opacity = opacity;
             } else {
                 // Selected: player color with high opacity (set by MarkerRenderer)
                 cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
