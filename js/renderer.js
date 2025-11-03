@@ -4,6 +4,7 @@
 
 import { CONFIG, FOUR_D_AXES } from './config.js';
 import { rotate4D, project4Dto3D, getHueFromW, getScaleFromW, getOpacityFromW } from './math4d.js';
+import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
 import { MarkerRenderer } from './rendering/MarkerRenderer.js';
 import { GridBuilder } from './grid/GridBuilder.js';
@@ -28,41 +29,17 @@ export class GridRenderer {
      * Initialize Three.js scene, camera, renderer
      */
     setupThreeJS() {
-        // Scene
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(CONFIG.SCENE_BACKGROUND);
-        this.scene.fog = new THREE.Fog(CONFIG.SCENE_BACKGROUND, CONFIG.FOG_NEAR, CONFIG.FOG_FAR);
+        // Scene manager (handles scene, renderer, lighting, raycaster)
+        this.sceneManager = new SceneManager(this.container);
 
         // Camera controller
-        const aspect = this.container.clientWidth / this.container.clientHeight;
+        const aspect = this.sceneManager.getAspect();
         this.cameraController = new CameraController(aspect);
 
-        // Renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.container.appendChild(this.renderer.domElement);
-
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(
-            CONFIG.AMBIENT_LIGHT_COLOR,
-            CONFIG.AMBIENT_LIGHT_INTENSITY
-        );
-        this.scene.add(ambientLight);
-
-        const pointLight = new THREE.PointLight(
-            CONFIG.POINT_LIGHT_COLOR,
-            CONFIG.POINT_LIGHT_INTENSITY,
-            CONFIG.POINT_LIGHT_DISTANCE
-        );
-        pointLight.position.set(10, 10, 10);
-        this.scene.add(pointLight);
-
-        // Raycaster for click detection
-        this.raycaster = new THREE.Raycaster();
-
-        // Handle window resize
-        window.addEventListener('resize', () => this.onResize());
+        // Setup resize callback for camera
+        this.sceneManager.setResizeCallback((aspect) => {
+            this.cameraController.updateAspect(aspect);
+        });
     }
 
     /**
@@ -77,7 +54,7 @@ export class GridRenderer {
         this.cells.forEach(cell => {
             cell.group = new THREE.Group();
             this.createCellMesh(cell);
-            this.scene.add(cell.group);
+            this.sceneManager.add(cell.group);
         });
     }
 
@@ -126,7 +103,7 @@ export class GridRenderer {
         const connections = gridBuilder.generateConnections();
 
         // Use ConnectionManager to create line objects
-        this.connectionManager = new ConnectionManager(this.scene);
+        this.connectionManager = new ConnectionManager(this.sceneManager.getScene());
         this.connectionManager.createAllLines(connections);
     }
 
@@ -188,8 +165,9 @@ export class GridRenderer {
      */
     getCellAtMouse(mouseX, mouseY) {
         const mouse = new THREE.Vector2(mouseX, mouseY);
-        this.raycaster.setFromCamera(mouse, this.cameraController.getCamera());
-        const intersects = this.raycaster.intersectObjects(this.cellMeshes);
+        const raycaster = this.sceneManager.getRaycaster();
+        raycaster.setFromCamera(mouse, this.cameraController.getCamera());
+        const intersects = raycaster.intersectObjects(this.cellMeshes);
 
         if (intersects.length > 0) {
             return intersects[0].object.userData.cell;
@@ -253,27 +231,29 @@ export class GridRenderer {
 
     /**
      * Render the scene
+     * Delegates to SceneManager
      */
     render() {
         this.updateCellPositions();
         this.updateConnectionLines();
-        this.renderer.render(this.scene, this.cameraController.getCamera());
+        this.sceneManager.render(this.cameraController.getCamera());
     }
 
     /**
      * Handle window resize
+     * Note: Resize is now handled by SceneManager with callback
      */
     onResize() {
-        const aspect = this.container.clientWidth / this.container.clientHeight;
-        this.cameraController.updateAspect(aspect);
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        // This method is kept for backwards compatibility
+        // Actual resize handling is done via SceneManager's callback
     }
 
     /**
      * Get renderer's DOM element
+     * Delegates to SceneManager
      * @returns {HTMLCanvasElement}
      */
     getCanvas() {
-        return this.renderer.domElement;
+        return this.sceneManager.getCanvas();
     }
 }
