@@ -164,7 +164,8 @@ export class InputController extends EventTarget {
 
         // Pinch - for camera zoom
         this.hammer.on('pinchstart', (e) => {
-            this.lastPinchScale = e.scale;
+            // Always start from 1 (Hammer.js uses 1 as the starting scale)
+            this.lastPinchScale = 1;
         });
 
         this.hammer.on('pinch', (e) => {
