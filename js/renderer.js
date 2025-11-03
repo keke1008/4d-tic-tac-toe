@@ -117,25 +117,19 @@ export class GridRenderer {
 
             cell.group.position.set(x, y, z);
 
-            // Update color based on W coordinate - More vibrant colors
-            const hue = getHueFromW(w);
-            const opacity = getOpacityFromW(w);
+            // Scale based on W coordinate for depth perception
             const scale = getScaleFromW(w);
-
-            // Only update color if no marker is placed
-            if (!cell.marker) {
-                cell.wireframe.material.color.setHSL(
-                    hue,
-                    CONFIG.SATURATION,
-                    CONFIG.LIGHTNESS
-                );
-                cell.wireframe.material.opacity = opacity;
-            } else {
-                // Marked cells have higher opacity and thicker lines
-                cell.wireframe.material.opacity = CONFIG.MARKED_CELL_OPACITY;
-            }
-
             cell.group.scale.setScalar(scale);
+
+            // Color and opacity: unselected cells use unified color, selected cells use player color
+            if (!cell.marker) {
+                // Unselected: unified color for all cells
+                cell.wireframe.material.color.setHex(CONFIG.UNSELECTED_CELL_COLOR);
+                cell.wireframe.material.opacity = CONFIG.UNSELECTED_CELL_OPACITY;
+            } else {
+                // Selected: player color with high opacity (set by MarkerRenderer)
+                cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
+            }
         });
     }
 
