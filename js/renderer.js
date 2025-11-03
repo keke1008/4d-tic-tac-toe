@@ -4,6 +4,7 @@
 
 import { CONFIG, FOUR_D_AXES } from './config.js';
 import { rotate4D, project4Dto3D, getHueFromW, getScaleFromW, getOpacityFromW } from './math4d.js';
+import { CameraController } from './rendering/CameraController.js';
 
 export class GridRenderer {
     constructor(container) {
@@ -12,7 +13,6 @@ export class GridRenderer {
         this.cellMeshes = [];
         this.connectionLines = [];
         this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
-        this.rotationCenter = { x: 0, y: 0, z: 0 };
 
         this.setupThreeJS();
         this.createGrid();
@@ -28,15 +28,9 @@ export class GridRenderer {
         this.scene.background = new THREE.Color(CONFIG.SCENE_BACKGROUND);
         this.scene.fog = new THREE.Fog(CONFIG.SCENE_BACKGROUND, CONFIG.FOG_NEAR, CONFIG.FOG_FAR);
 
-        // Camera
-        this.camera = new THREE.PerspectiveCamera(
-            CONFIG.CAMERA_FOV,
-            this.container.clientWidth / this.container.clientHeight,
-            0.1,
-            1000
-        );
-        this.camera.position.set(0, 0, CONFIG.CAMERA_DISTANCE);
-        this.camera.lookAt(0, 0, 0);
+        // Camera controller
+        const aspect = this.container.clientWidth / this.container.clientHeight;
+        this.cameraController = new CameraController(aspect);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -328,7 +322,7 @@ export class GridRenderer {
      */
     getCellAtMouse(mouseX, mouseY) {
         const mouse = new THREE.Vector2(mouseX, mouseY);
-        this.raycaster.setFromCamera(mouse, this.camera);
+        this.raycaster.setFromCamera(mouse, this.cameraController.getCamera());
         const intersects = this.raycaster.intersectObjects(this.cellMeshes);
 
         if (intersects.length > 0) {
@@ -361,42 +355,40 @@ export class GridRenderer {
 
     /**
      * Set camera distance (for pinch zoom)
+     * Delegates to CameraController
      * @param {number} distance - Camera distance from origin
      */
     setCameraDistance(distance) {
-        this.camera.position.z = Math.max(5, Math.min(25, distance)); // Clamp between 5 and 25
+        this.cameraController.setCameraDistance(distance);
     }
 
     /**
      * Adjust camera distance by delta (for pinch gesture)
+     * Delegates to CameraController
      * @param {number} delta - Distance change
      */
     adjustCameraDistance(delta) {
-        const currentZ = this.camera.position.z;
-        this.setCameraDistance(currentZ - delta); // Negative because pinch out should zoom in
+        this.cameraController.adjustCameraDistance(delta);
     }
 
     /**
      * Pan camera position (for two-finger pan gesture)
+     * Delegates to CameraController
      * @param {number} deltaX - X movement
      * @param {number} deltaY - Y movement
      */
     panCamera(deltaX, deltaY) {
-        this.camera.position.x += deltaX;
-        this.camera.position.y += deltaY;
-        this.rotationCenter.x += deltaX;
-        this.rotationCenter.y += deltaY;
-        this.camera.lookAt(this.rotationCenter.x, this.rotationCenter.y, this.rotationCenter.z);
+        this.cameraController.panCamera(deltaX, deltaY);
     }
 
     /**
      * Set rotation center offset
+     * Delegates to CameraController
      * @param {string} axis - 'x', 'y', or 'z'
      * @param {number} offset - Offset value
      */
     setRotationCenter(axis, offset) {
-        this.rotationCenter[axis] = offset;
-        this.camera.lookAt(this.rotationCenter.x, this.rotationCenter.y, this.rotationCenter.z);
+        this.cameraController.setRotationCenter(axis, offset);
     }
 
     /**
@@ -405,15 +397,15 @@ export class GridRenderer {
     render() {
         this.updateCellPositions();
         this.updateConnectionLines();
-        this.renderer.render(this.scene, this.camera);
+        this.renderer.render(this.scene, this.cameraController.getCamera());
     }
 
     /**
      * Handle window resize
      */
     onResize() {
-        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera.updateProjectionMatrix();
+        const aspect = this.container.clientWidth / this.container.clientHeight;
+        this.cameraController.updateAspect(aspect);
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     }
 
