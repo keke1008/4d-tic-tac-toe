@@ -2,6 +2,8 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
+export const VERSION = '1.1.0';
+
 export const CONFIG = {
     // Game settings
     GRID_SIZE: 4,

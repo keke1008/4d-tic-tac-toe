@@ -3,7 +3,7 @@
  * Integrates all components and manages game flow
  */
 
-import { CONFIG } from './config.js';
+import { CONFIG, VERSION } from './config.js';
 import { GameBoard } from './game.js';
 import { GridRenderer } from './renderer.js';
 import { InputController } from './input.js';
@@ -23,6 +23,7 @@ class Game {
 
         this.setupEventListeners();
         this.updateStatus();
+        this.updateVersion();
         this.animate();
     }
 
@@ -124,6 +125,16 @@ class Game {
             } else {
                 statusElement.textContent = `プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`;
             }
+        }
+    }
+
+    /**
+     * Update version display
+     */
+    updateVersion() {
+        const versionElement = document.getElementById('version');
+        if (versionElement) {
+            versionElement.textContent = `v${VERSION}`;
         }
     }
 
