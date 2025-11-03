@@ -51,14 +51,14 @@ class Game {
             this.toggleAutoRotate();
         });
 
-        // Camera distance change
-        this.inputController.addEventListener('cameraDistanceChange', (e) => {
-            this.renderer.setCameraDistance(e.detail.distance);
+        // Camera pinch gesture (zoom)
+        this.inputController.addEventListener('cameraPinch', (e) => {
+            this.renderer.adjustCameraDistance(e.detail.delta);
         });
 
-        // Rotation center change
-        this.inputController.addEventListener('rotationCenterChange', (e) => {
-            this.renderer.setRotationCenter(e.detail.axis, e.detail.offset);
+        // Camera pan gesture (move)
+        this.inputController.addEventListener('cameraPan', (e) => {
+            this.renderer.panCamera(e.detail.deltaX, e.detail.deltaY);
         });
     }
 

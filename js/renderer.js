@@ -360,11 +360,33 @@ export class GridRenderer {
     }
 
     /**
-     * Set camera distance
+     * Set camera distance (for pinch zoom)
      * @param {number} distance - Camera distance from origin
      */
     setCameraDistance(distance) {
-        this.camera.position.z = distance;
+        this.camera.position.z = Math.max(5, Math.min(25, distance)); // Clamp between 5 and 25
+    }
+
+    /**
+     * Adjust camera distance by delta (for pinch gesture)
+     * @param {number} delta - Distance change
+     */
+    adjustCameraDistance(delta) {
+        const currentZ = this.camera.position.z;
+        this.setCameraDistance(currentZ - delta); // Negative because pinch out should zoom in
+    }
+
+    /**
+     * Pan camera position (for two-finger pan gesture)
+     * @param {number} deltaX - X movement
+     * @param {number} deltaY - Y movement
+     */
+    panCamera(deltaX, deltaY) {
+        this.camera.position.x += deltaX;
+        this.camera.position.y += deltaY;
+        this.rotationCenter.x += deltaX;
+        this.rotationCenter.y += deltaY;
+        this.camera.lookAt(this.rotationCenter.x, this.rotationCenter.y, this.rotationCenter.z);
     }
 
     /**
