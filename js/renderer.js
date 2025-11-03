@@ -17,12 +17,17 @@ export class GridRenderer {
         this.cellMeshes = [];
         this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
 
+        // Hover and preview state
+        this.hoveredCell = null;
+        this.previewCell = null;
+
         // Initialize marker renderer
         this.markerRenderer = new MarkerRenderer();
 
         this.setupThreeJS();
         this.createGrid();
         this.createGridConnections();
+        this.setupHoverDetection();
     }
 
     /**
@@ -55,6 +60,31 @@ export class GridRenderer {
             cell.group = new THREE.Group();
             this.createCellMesh(cell);
             this.sceneManager.add(cell.group);
+        });
+    }
+
+    /**
+     * Setup hover detection via mouse move
+     */
+    setupHoverDetection() {
+        const canvas = this.sceneManager.getCanvas();
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            const cell = this.getCellAtMouse(mouseX, mouseY);
+
+            // Update hovered cell
+            if (cell !== this.hoveredCell) {
+                this.hoveredCell = cell;
+            }
+        });
+
+        // Clear hover when mouse leaves canvas
+        canvas.addEventListener('mouseleave', () => {
+            this.hoveredCell = null;
         });
     }
 
@@ -121,23 +151,39 @@ export class GridRenderer {
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
-            // Color and opacity: unselected cells use W-based colors, selected cells use player color
-            if (!cell.marker) {
-                // Unselected: W-based color for depth visualization (subtle)
+            // Determine cell state and color
+            const isHovered = cell === this.hoveredCell;
+            const isPreview = cell === this.previewCell;
+
+            if (cell.marker) {
+                // Fully selected: player color with high opacity (set by MarkerRenderer)
+                cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
+            } else if (isPreview) {
+                // Preview selection: show player color at reduced opacity
+                const currentPlayer = this.previewCell.previewPlayer || 'X';
+                const color = currentPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+                cell.wireframe.material.color.setHex(color);
+                cell.wireframe.material.opacity = CONFIG.PREVIEW_CELL_OPACITY;
+            } else {
+                // Unselected: W-based color for depth visualization
                 const hue = getHueFromW(w);
                 const wFactor = (w + 2) / 4; // Normalize W to 0-1 range
-                const opacity = CONFIG.UNSELECTED_CELL_OPACITY_MIN +
+                let lightness = CONFIG.UNSELECTED_CELL_LIGHTNESS;
+                let opacity = CONFIG.UNSELECTED_CELL_OPACITY_MIN +
                               wFactor * CONFIG.UNSELECTED_CELL_OPACITY_RANGE;
+
+                // Boost lightness and opacity when hovered
+                if (isHovered) {
+                    lightness += CONFIG.HOVER_CELL_LIGHTNESS_BOOST;
+                    opacity += CONFIG.HOVER_CELL_OPACITY_BOOST;
+                }
 
                 cell.wireframe.material.color.setHSL(
                     hue,
                     CONFIG.UNSELECTED_CELL_SATURATION,
-                    CONFIG.UNSELECTED_CELL_LIGHTNESS
+                    lightness
                 );
                 cell.wireframe.material.opacity = opacity;
-            } else {
-                // Selected: player color with high opacity (set by MarkerRenderer)
-                cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
             }
         });
     }
@@ -147,7 +193,12 @@ export class GridRenderer {
      * Delegates to ConnectionManager
      */
     updateConnectionLines() {
-        this.connectionManager.updateLines(this.rotations, this.cells);
+        this.connectionManager.updateLines(
+            this.rotations,
+            this.cells,
+            this.hoveredCell,
+            this.previewCell
+        );
     }
 
     /**
@@ -179,11 +230,42 @@ export class GridRenderer {
     }
 
     /**
+     * Set preview selection for a cell
+     * @param {Object} cell - Cell to preview
+     * @param {string} player - Player ('X' or 'O')
+     */
+    setPreviewSelection(cell, player) {
+        this.previewCell = cell;
+        if (cell) {
+            cell.previewPlayer = player;
+        }
+    }
+
+    /**
+     * Clear preview selection
+     */
+    clearPreviewSelection() {
+        if (this.previewCell) {
+            this.previewCell.previewPlayer = null;
+        }
+        this.previewCell = null;
+    }
+
+    /**
+     * Get current preview cell
+     * @returns {Object|null}
+     */
+    getPreviewCell() {
+        return this.previewCell;
+    }
+
+    /**
      * Clear all markers from cells
      * Delegates to MarkerRenderer
      */
     clearMarkers() {
         this.markerRenderer.clearAllMarkers(this.cells);
+        this.clearPreviewSelection();
     }
 
     /**
