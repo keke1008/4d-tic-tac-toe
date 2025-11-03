@@ -31,11 +31,14 @@ export class ConnectionManager {
             color: 0x4444ff,
             transparent: true,
             opacity: 0.15,
-            linewidth: CONFIG.CONNECTION_LINE_WIDTH
+            linewidth: CONFIG.CONNECTION_LINE_WIDTH,
+            depthTest: false,  // Always render grid lines on top (not occluded by cells)
+            depthWrite: false  // Don't write to depth buffer (prevents transparency issues)
         });
 
         const line = new THREE.Line(geometry, material);
         line.userData = { pos4d1, pos4d2 };
+        line.renderOrder = 999;  // Render after most objects
 
         this.scene.add(line);
         this.connectionLines.push(line);
