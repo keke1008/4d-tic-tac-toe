@@ -138,8 +138,8 @@ export class InputController extends EventTarget {
 
             this.dispatchEvent(new CustomEvent('cameraPan', {
                 detail: {
-                    deltaX: -incrementalDeltaX * 0.01, // Negative for natural direction
-                    deltaY: incrementalDeltaY * 0.01
+                    deltaX: incrementalDeltaX * 0.01,
+                    deltaY: -incrementalDeltaY * 0.01
                 }
             }));
         });
@@ -158,7 +158,7 @@ export class InputController extends EventTarget {
             this.lastPinchScale = e.scale;
 
             this.dispatchEvent(new CustomEvent('cameraPinch', {
-                detail: { delta: -scaleDelta * 3 } // Negative for intuitive zoom
+                detail: { delta: scaleDelta * 3 }
             }));
         });
 
