@@ -2,7 +2,7 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
-export const VERSION = '1.9.0';
+export const VERSION = '2.0.0';
 
 export const CONFIG = {
     // Game settings
@@ -42,6 +42,15 @@ export const CONFIG = {
 
     // Selected cell appearance - Uses player colors
     SELECTED_CELL_OPACITY: 0.9,        // Bright and prominent
+
+    // Hover state - Cells brighten when mouse hovers over them
+    HOVER_CELL_LIGHTNESS_BOOST: 0.15,  // Add to lightness when hovering
+    HOVER_CELL_OPACITY_BOOST: 0.2,     // Add to opacity when hovering
+    HOVER_GRID_OPACITY: 0.45,          // Grid lines connected to hovered cell
+
+    // Preview selection state - After 1st click, before 2nd click confirmation
+    PREVIEW_CELL_OPACITY: 0.6,         // Semi-transparent player color
+    PREVIEW_GRID_OPACITY: 0.4,         // Moderate grid visibility
 
     // Selected grid appearance - Based on connection endpoints
     SELECTED_GRID_OPACITY: 0.5,        // Player color, moderate brightness

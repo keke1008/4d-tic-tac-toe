@@ -64,7 +64,7 @@ class Game {
     }
 
     /**
-     * Handle cell click
+     * Handle cell click (two-step process: preview → confirm)
      * @param {number} mouseX - Normalized mouse X
      * @param {number} mouseY - Normalized mouse Y
      */
@@ -75,24 +75,36 @@ class Game {
         if (!cell) return;
 
         const { x, y, z, w } = cell.coords;
+        const currentPlayer = this.gameBoard.getCurrentPlayer();
+        const previewCell = this.renderer.getPreviewCell();
 
-        // Try to place marker
-        if (this.gameBoard.placeMarker(x, y, z, w)) {
-            const player = this.gameBoard.getCurrentPlayer();
-            this.renderer.createMarker(cell, player);
+        // Check if this cell is already occupied
+        if (this.gameBoard.getMarker(x, y, z, w)) return;
 
-            // Check win condition
-            if (this.gameBoard.checkWin(x, y, z, w)) {
-                this.gameBoard.setGameOver(player);
-                this.updateStatus(`🎉 プレイヤー ${player} の勝利！`);
-            } else if (this.gameBoard.isBoardFull()) {
-                this.gameBoard.setGameOver(null);
-                this.updateStatus('引き分け！');
-            } else {
-                // Switch player
-                this.gameBoard.switchPlayer();
-                this.updateStatus(`プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`);
+        // If clicking the already previewed cell → confirm placement
+        if (previewCell === cell) {
+            // Try to place marker
+            if (this.gameBoard.placeMarker(x, y, z, w)) {
+                this.renderer.createMarker(cell, currentPlayer);
+                this.renderer.clearPreviewSelection();
+
+                // Check win condition
+                if (this.gameBoard.checkWin(x, y, z, w)) {
+                    this.gameBoard.setGameOver(currentPlayer);
+                    this.updateStatus(`🎉 プレイヤー ${currentPlayer} の勝利！`);
+                } else if (this.gameBoard.isBoardFull()) {
+                    this.gameBoard.setGameOver(null);
+                    this.updateStatus('引き分け！');
+                } else {
+                    // Switch player
+                    this.gameBoard.switchPlayer();
+                    this.updateStatus(`プレイヤー ${this.gameBoard.getCurrentPlayer()} の番です`);
+                }
             }
+        } else {
+            // First click or different cell → preview selection
+            this.renderer.setPreviewSelection(cell, currentPlayer);
+            this.updateStatus(`プレイヤー ${currentPlayer}: もう一度クリックで確定`);
         }
     }
 

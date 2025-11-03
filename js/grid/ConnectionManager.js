@@ -57,14 +57,20 @@ export class ConnectionManager {
      * Update all connection lines based on current rotation
      * @param {Object} rotations - Rotation angles {xy, xz, xw, yz, yw, zw}
      * @param {Array} cells - Array of cell objects (for determining line colors)
+     * @param {Object} hoveredCell - Currently hovered cell (optional)
+     * @param {Object} previewCell - Currently previewed cell (optional)
      */
-    updateLines(rotations, cells = []) {
+    updateLines(rotations, cells = [], hoveredCell = null, previewCell = null) {
         // Build map of cell positions to cell objects for fast lookup
         const cellMap = new Map();
         cells.forEach(cell => {
             const key = cell.pos4d.join(',');
             cellMap.set(key, cell);
         });
+
+        // Get position keys for hover and preview cells
+        const hoveredKey = hoveredCell ? hoveredCell.pos4d.join(',') : null;
+        const previewKey = previewCell ? previewCell.pos4d.join(',') : null;
 
         this.connectionLines.forEach(line => {
             const { pos4d1, pos4d2 } = line.userData;
@@ -74,6 +80,14 @@ export class ConnectionManager {
             const key2 = pos4d2.join(',');
             const cell1 = cellMap.get(key1);
             const cell2 = cellMap.get(key2);
+
+            // Check hover and preview states
+            const isHovered1 = key1 === hoveredKey;
+            const isHovered2 = key2 === hoveredKey;
+            const isPreview1 = key1 === previewKey;
+            const isPreview2 = key2 === previewKey;
+            const isHovered = isHovered1 || isHovered2;
+            const isPreview = isPreview1 || isPreview2;
 
             // Rotate and project endpoints
             const rotated1 = rotate4D(pos4d1, rotations);
@@ -91,17 +105,14 @@ export class ConnectionManager {
             positions[5] = z2;
             line.geometry.attributes.position.needsUpdate = true;
 
-            // Determine line color based on endpoint selection states
+            // Determine line color based on endpoint states
             const selected1 = cell1?.isSelected || false;
             const selected2 = cell2?.isSelected || false;
             const player1 = cell1?.player;
             const player2 = cell2?.player;
 
-            if (!selected1 && !selected2) {
-                // Both unselected: unified grid color
-                line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
-                line.material.opacity = CONFIG.UNSELECTED_GRID_OPACITY;
-            } else if (selected1 && selected2) {
+            // Priority: Selected > Preview > Hover > Unselected
+            if (selected1 && selected2) {
                 // Both selected
                 if (player1 === player2) {
                     // Same player: strong color
@@ -113,12 +124,26 @@ export class ConnectionManager {
                     line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
                     line.material.opacity = CONFIG.UNSELECTED_GRID_OPACITY;
                 }
-            } else {
+            } else if (selected1 || selected2) {
                 // One selected: use that player's color
                 const player = selected1 ? player1 : player2;
                 const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
                 line.material.color.setHex(color);
                 line.material.opacity = CONFIG.SELECTED_GRID_OPACITY;
+            } else if (isPreview) {
+                // Preview state: show preview player color
+                const previewPlayer = previewCell?.previewPlayer || 'X';
+                const color = previewPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+                line.material.color.setHex(color);
+                line.material.opacity = CONFIG.PREVIEW_GRID_OPACITY;
+            } else if (isHovered) {
+                // Hover state: slightly brighter grid
+                line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
+                line.material.opacity = CONFIG.HOVER_GRID_OPACITY;
+            } else {
+                // Both unselected: unified grid color
+                line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
+                line.material.opacity = CONFIG.UNSELECTED_GRID_OPACITY;
             }
         });
     }
