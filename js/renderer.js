@@ -5,13 +5,14 @@
 import { CONFIG, FOUR_D_AXES } from './config.js';
 import { rotate4D, project4Dto3D, getHueFromW, getScaleFromW, getOpacityFromW } from './math4d.js';
 import { CameraController } from './rendering/CameraController.js';
+import { GridBuilder } from './grid/GridBuilder.js';
+import { ConnectionManager } from './grid/ConnectionManager.js';
 
 export class GridRenderer {
     constructor(container) {
         this.container = container;
         this.cells = [];
         this.cellMeshes = [];
-        this.connectionLines = [];
         this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
 
         this.setupThreeJS();
@@ -64,33 +65,16 @@ export class GridRenderer {
      * Create the 4D grid cells
      */
     createGrid() {
-        const offset = (CONFIG.GRID_SIZE - 1) * CONFIG.CELL_SPACING / 2;
+        // Use GridBuilder to generate cell data
+        const gridBuilder = new GridBuilder();
+        this.cells = gridBuilder.generateCells();
 
-        for (let w = 0; w < CONFIG.GRID_SIZE; w++) {
-            for (let z = 0; z < CONFIG.GRID_SIZE; z++) {
-                for (let y = 0; y < CONFIG.GRID_SIZE; y++) {
-                    for (let x = 0; x < CONFIG.GRID_SIZE; x++) {
-                        const cell = {
-                            pos4d: [
-                                x * CONFIG.CELL_SPACING - offset,
-                                y * CONFIG.CELL_SPACING - offset,
-                                z * CONFIG.CELL_SPACING - offset,
-                                w * CONFIG.CELL_SPACING - offset
-                            ],
-                            coords: { x, y, z, w },
-                            group: new THREE.Group(),
-                            wireframe: null,
-                            selectionMesh: null,
-                            marker: null
-                        };
-
-                        this.createCellMesh(cell);
-                        this.scene.add(cell.group);
-                        this.cells.push(cell);
-                    }
-                }
-            }
-        }
+        // Create Three.js meshes for each cell
+        this.cells.forEach(cell => {
+            cell.group = new THREE.Group();
+            this.createCellMesh(cell);
+            this.scene.add(cell.group);
+        });
     }
 
     /**
@@ -133,86 +117,13 @@ export class GridRenderer {
      * Create connection lines between cells in all 4 axes
      */
     createGridConnections() {
-        const offset = (CONFIG.GRID_SIZE - 1) * CONFIG.CELL_SPACING / 2;
+        // Use GridBuilder to generate connection data
+        const gridBuilder = new GridBuilder();
+        const connections = gridBuilder.generateConnections();
 
-        for (let w = 0; w < CONFIG.GRID_SIZE; w++) {
-            for (let z = 0; z < CONFIG.GRID_SIZE; z++) {
-                for (let y = 0; y < CONFIG.GRID_SIZE; y++) {
-                    for (let x = 0; x < CONFIG.GRID_SIZE; x++) {
-                        const pos4d = [
-                            x * CONFIG.CELL_SPACING - offset,
-                            y * CONFIG.CELL_SPACING - offset,
-                            z * CONFIG.CELL_SPACING - offset,
-                            w * CONFIG.CELL_SPACING - offset
-                        ];
-
-                        // Connect in X direction
-                        if (x < CONFIG.GRID_SIZE - 1) {
-                            this.createConnectionLine(pos4d, [
-                                (x + 1) * CONFIG.CELL_SPACING - offset,
-                                y * CONFIG.CELL_SPACING - offset,
-                                z * CONFIG.CELL_SPACING - offset,
-                                w * CONFIG.CELL_SPACING - offset
-                            ]);
-                        }
-
-                        // Connect in Y direction
-                        if (y < CONFIG.GRID_SIZE - 1) {
-                            this.createConnectionLine(pos4d, [
-                                x * CONFIG.CELL_SPACING - offset,
-                                (y + 1) * CONFIG.CELL_SPACING - offset,
-                                z * CONFIG.CELL_SPACING - offset,
-                                w * CONFIG.CELL_SPACING - offset
-                            ]);
-                        }
-
-                        // Connect in Z direction
-                        if (z < CONFIG.GRID_SIZE - 1) {
-                            this.createConnectionLine(pos4d, [
-                                x * CONFIG.CELL_SPACING - offset,
-                                y * CONFIG.CELL_SPACING - offset,
-                                (z + 1) * CONFIG.CELL_SPACING - offset,
-                                w * CONFIG.CELL_SPACING - offset
-                            ]);
-                        }
-
-                        // Connect in W direction
-                        if (w < CONFIG.GRID_SIZE - 1) {
-                            this.createConnectionLine(pos4d, [
-                                x * CONFIG.CELL_SPACING - offset,
-                                y * CONFIG.CELL_SPACING - offset,
-                                z * CONFIG.CELL_SPACING - offset,
-                                (w + 1) * CONFIG.CELL_SPACING - offset
-                            ]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Create a single connection line
-     * @param {Array} pos4d1 - Start position [x, y, z, w]
-     * @param {Array} pos4d2 - End position [x, y, z, w]
-     */
-    createConnectionLine(pos4d1, pos4d2) {
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(6); // 2 points * 3 coordinates
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-        const material = new THREE.LineBasicMaterial({
-            color: 0x4444ff,
-            transparent: true,
-            opacity: 0.15,
-            linewidth: CONFIG.CONNECTION_LINE_WIDTH  // Thicker connection lines
-        });
-
-        const line = new THREE.Line(geometry, material);
-        line.userData = { pos4d1, pos4d2 };
-
-        this.scene.add(line);
-        this.connectionLines.push(line);
+        // Use ConnectionManager to create line objects
+        this.connectionManager = new ConnectionManager(this.scene);
+        this.connectionManager.createAllLines(connections);
     }
 
     /**
@@ -249,34 +160,10 @@ export class GridRenderer {
 
     /**
      * Update connection line positions
+     * Delegates to ConnectionManager
      */
     updateConnectionLines() {
-        this.connectionLines.forEach(line => {
-            const { pos4d1, pos4d2 } = line.userData;
-
-            const rotated1 = rotate4D(pos4d1, this.rotations);
-            const rotated2 = rotate4D(pos4d2, this.rotations);
-            const [x1, y1, z1, w1] = project4Dto3D(rotated1);
-            const [x2, y2, z2, w2] = project4Dto3D(rotated2);
-
-            const positions = line.geometry.attributes.position.array;
-            positions[0] = x1;
-            positions[1] = y1;
-            positions[2] = z1;
-            positions[3] = x2;
-            positions[4] = y2;
-            positions[5] = z2;
-            line.geometry.attributes.position.needsUpdate = true;
-
-            // Update color based on average W coordinate
-            const avgW = (w1 + w2) / 2;
-            const hue = getHueFromW(avgW);
-            const wFactor = (avgW + 2) / 4;
-            const opacity = CONFIG.CONNECTION_OPACITY_MIN + wFactor * CONFIG.CONNECTION_OPACITY_RANGE;
-
-            line.material.color.setHSL(hue, CONFIG.SATURATION * 0.8, CONFIG.LIGHTNESS * 0.7);
-            line.material.opacity = opacity;
-        });
+        this.connectionManager.updateLines(this.rotations);
     }
 
     /**
