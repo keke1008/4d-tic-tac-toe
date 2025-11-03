@@ -5,6 +5,7 @@
 import { CONFIG, FOUR_D_AXES } from './config.js';
 import { rotate4D, project4Dto3D, getHueFromW, getScaleFromW, getOpacityFromW } from './math4d.js';
 import { CameraController } from './rendering/CameraController.js';
+import { MarkerRenderer } from './rendering/MarkerRenderer.js';
 import { GridBuilder } from './grid/GridBuilder.js';
 import { ConnectionManager } from './grid/ConnectionManager.js';
 
@@ -14,6 +15,9 @@ export class GridRenderer {
         this.cells = [];
         this.cellMeshes = [];
         this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
+
+        // Initialize marker renderer
+        this.markerRenderer = new MarkerRenderer();
 
         this.setupThreeJS();
         this.createGrid();
@@ -168,37 +172,12 @@ export class GridRenderer {
 
     /**
      * Create a marker (X or O) on a cell
+     * Delegates to MarkerRenderer
      * @param {Object} cell - Cell object
      * @param {string} player - 'X' or 'O'
      */
     createMarker(cell, player) {
-        // Create canvas texture for marker
-        const canvas = document.createElement('canvas');
-        canvas.width = CONFIG.MARKER_CANVAS_SIZE;
-        canvas.height = CONFIG.MARKER_CANVAS_SIZE;
-        const ctx = canvas.getContext('2d');
-
-        ctx.fillStyle = player === 'X' ? '#ff00ff' : '#00ffff';
-        ctx.font = 'bold 100px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(player, 64, 64);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true
-        });
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(CONFIG.MARKER_SCALE, CONFIG.MARKER_SCALE, 1);
-
-        cell.group.add(sprite);
-        cell.marker = sprite;
-
-        // Update wireframe color
-        const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
-        cell.wireframe.material.color.setHex(color);
-        cell.wireframe.material.opacity = 0.6;
+        this.markerRenderer.createMarker(cell, player);
     }
 
     /**
@@ -220,16 +199,10 @@ export class GridRenderer {
 
     /**
      * Clear all markers from cells
+     * Delegates to MarkerRenderer
      */
     clearMarkers() {
-        this.cells.forEach(cell => {
-            if (cell.marker) {
-                cell.group.remove(cell.marker);
-                cell.marker = null;
-            }
-            cell.wireframe.material.color.setHex(0x00ffff);
-            cell.wireframe.material.opacity = 0.3;
-        });
+        this.markerRenderer.clearAllMarkers(this.cells);
     }
 
     /**
