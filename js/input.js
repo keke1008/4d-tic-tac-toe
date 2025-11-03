@@ -3,6 +3,7 @@
  */
 
 import { CONFIG } from './config.js';
+import { GestureHandler } from './input/GestureHandler.js';
 
 export class InputController extends EventTarget {
     constructor(canvas) {
@@ -13,171 +14,62 @@ export class InputController extends EventTarget {
         this.horizontalRotationAxis = CONFIG.DEFAULT_HORIZONTAL_AXIS;
         this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
 
-        // Gesture state
-        this.lastPinchScale = 1;
-        this.lastPanDelta = { x: 0, y: 0 };
-
         // Mouse state
         this.isMouseDragging = false;
         this.lastMousePos = { x: 0, y: 0 };
 
-        this.setupHammer();
+        this.setupGestureHandler();
         this.setupMouseControls();
         this.setupRotationToggles();
         this.setupActionButtons();
     }
 
     /**
-     * Setup Hammer.js for gesture recognition
+     * Setup gesture handler and listen to its events
      */
-    setupHammer() {
-        // Create Hammer instance
-        this.hammer = new Hammer.Manager(this.canvas);
+    setupGestureHandler() {
+        this.gestureHandler = new GestureHandler(this.canvas);
 
-        // Single-tap recognizer
-        const tap = new Hammer.Tap({
-            event: 'tap',
-            pointers: 1,
-            threshold: 10,
-            time: 300
-        });
-
-        // Single-finger pan recognizer (for rotation)
-        const singlePan = new Hammer.Pan({
-            event: 'singlepan',
-            pointers: 1,
-            threshold: 5,
-            direction: Hammer.DIRECTION_ALL
-        });
-
-        // Two-finger pan recognizer (for camera movement)
-        const doublePan = new Hammer.Pan({
-            event: 'doublepan',
-            pointers: 2,
-            threshold: 5,
-            direction: Hammer.DIRECTION_ALL
-        });
-
-        // Pinch recognizer (for zoom)
-        const pinch = new Hammer.Pinch({
-            event: 'pinch',
-            pointers: 2,
-            threshold: 0.1
-        });
-
-        // Add recognizers to manager
-        this.hammer.add([tap, singlePan, doublePan, pinch]);
-
-        // Allow pinch and pan to be recognized simultaneously
-        pinch.recognizeWith([doublePan]);
-
-        // Setup gesture event listeners
-        this.setupGestureListeners();
-    }
-
-    /**
-     * Setup Hammer.js gesture event listeners
-     */
-    setupGestureListeners() {
-        // Tap gesture - for placing markers
-        this.hammer.on('tap', (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = ((e.center.x - rect.left) / rect.width) * 2 - 1;
-            const mouseY = -((e.center.y - rect.top) / rect.height) * 2 + 1;
-
+        // Forward cell click events
+        this.gestureHandler.addEventListener('cellClick', (e) => {
             this.dispatchEvent(new CustomEvent('cellClick', {
-                detail: { mouseX, mouseY }
+                detail: e.detail
             }));
         });
 
-        // Single-finger pan - for 4D rotation (supports diagonal drag)
-        this.hammer.on('singlepanstart', (e) => {
-            // Don't start rotation if Shift key is pressed (used for camera pan)
-            if (e.srcEvent && e.srcEvent.shiftKey) {
-                return;
-            }
-        });
-
-        this.hammer.on('singlepan', (e) => {
-            // Ignore rotation if Shift key is pressed (used for camera pan)
-            if (e.srcEvent && e.srcEvent.shiftKey) {
-                return;
-            }
-
-            const absDeltaX = Math.abs(e.deltaX);
-            const absDeltaY = Math.abs(e.deltaY);
-
-            // Apply horizontal rotation if there's horizontal movement
-            if (absDeltaX > CONFIG.SWIPE_THRESHOLD) {
-                this.dispatchEvent(new CustomEvent('rotate', {
-                    detail: {
-                        axis: this.horizontalRotationAxis,
-                        delta: e.velocityX * CONFIG.ROTATION_SENSITIVITY * 10
-                    }
-                }));
-            }
-
-            // Apply vertical rotation if there's vertical movement
-            if (absDeltaY > CONFIG.SWIPE_THRESHOLD) {
-                this.dispatchEvent(new CustomEvent('rotate', {
-                    detail: {
-                        axis: this.verticalRotationAxis,
-                        delta: -e.velocityY * CONFIG.ROTATION_SENSITIVITY * 10
-                    }
-                }));
-            }
-        });
-
-        this.hammer.on('singlepanend', () => {
-            // No state to clear for diagonal drag
-        });
-
-        // Two-finger pan - for camera movement
-        this.hammer.on('doublepanstart', () => {
-            this.lastPanDelta = { x: 0, y: 0 };
-        });
-
-        this.hammer.on('doublepan', (e) => {
-            // Calculate incremental delta from last position
-            const currentDelta = { x: e.deltaX, y: e.deltaY };
-            const incrementalDeltaX = currentDelta.x - this.lastPanDelta.x;
-            const incrementalDeltaY = currentDelta.y - this.lastPanDelta.y;
-            this.lastPanDelta = currentDelta;
-
-            this.dispatchEvent(new CustomEvent('cameraPan', {
+        // Forward rotation events with axis information
+        this.gestureHandler.addEventListener('rotateHorizontal', (e) => {
+            this.dispatchEvent(new CustomEvent('rotate', {
                 detail: {
-                    deltaX: -incrementalDeltaX * 0.01,
-                    deltaY: incrementalDeltaY * 0.01
+                    axis: this.horizontalRotationAxis,
+                    delta: e.detail.delta
                 }
             }));
         });
 
-        this.hammer.on('doublepanend', () => {
-            this.lastPanDelta = { x: 0, y: 0 };
-        });
-
-        // Pinch - for camera zoom
-        this.hammer.on('pinchstart', (e) => {
-            // Use current scale as baseline (e.scale at start)
-            this.lastPinchScale = e.scale;
-        });
-
-        this.hammer.on('pinch', (e) => {
-            // Calculate delta from last recorded scale
-            const scaleDelta = e.scale - this.lastPinchScale;
-            this.lastPinchScale = e.scale;
-
-            // Apply zoom with appropriate sensitivity
-            this.dispatchEvent(new CustomEvent('cameraPinch', {
-                detail: { delta: scaleDelta * 5 }  // Increased multiplier for better responsiveness
+        this.gestureHandler.addEventListener('rotateVertical', (e) => {
+            this.dispatchEvent(new CustomEvent('rotate', {
+                detail: {
+                    axis: this.verticalRotationAxis,
+                    delta: e.detail.delta
+                }
             }));
         });
 
-        this.hammer.on('pinchend', () => {
-            // Reset to default
-            this.lastPinchScale = 1;
+        // Forward camera events
+        this.gestureHandler.addEventListener('cameraPan', (e) => {
+            this.dispatchEvent(new CustomEvent('cameraPan', {
+                detail: e.detail
+            }));
+        });
+
+        this.gestureHandler.addEventListener('cameraPinch', (e) => {
+            this.dispatchEvent(new CustomEvent('cameraPinch', {
+                detail: e.detail
+            }));
         });
     }
+
 
     /**
      * Setup mouse controls for PC users
@@ -321,11 +213,11 @@ export class InputController extends EventTarget {
     }
 
     /**
-     * Cleanup Hammer.js instance
+     * Cleanup resources
      */
     destroy() {
-        if (this.hammer) {
-            this.hammer.destroy();
+        if (this.gestureHandler) {
+            this.gestureHandler.destroy();
         }
     }
 }
