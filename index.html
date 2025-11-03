@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4次元三目並べ - Tesseract Tic-Tac-Toe</title>
+    <title>4次元三目並べ - Rotating Tesseract</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a0a1a 100%);
+            background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0a1a 100%);
             color: #fff;
             overflow: hidden;
             height: 100vh;
@@ -39,13 +39,13 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            text-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
             animation: glow 3s ease-in-out infinite;
+            margin-top: 20px;
         }
 
         @keyframes glow {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.5); }
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 20px rgba(255, 0, 255, 0.5)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 255, 255, 0.8)); }
         }
 
         #canvas {
@@ -54,7 +54,7 @@
             box-shadow: 0 0 50px rgba(255, 0, 255, 0.3),
                         inset 0 0 50px rgba(0, 255, 255, 0.1);
             background: rgba(0, 0, 0, 0.5);
-            cursor: crosshair;
+            cursor: pointer;
         }
 
         #info {
@@ -67,6 +67,7 @@
             border-radius: 15px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 0, 255, 0.2);
+            max-width: 90%;
         }
 
         #status {
@@ -84,7 +85,7 @@
 
         button {
             padding: 12px 24px;
-            font-size: 1.1em;
+            font-size: 1em;
             background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
             border: 2px solid rgba(255, 0, 255, 0.5);
             border-radius: 8px;
@@ -100,82 +101,95 @@
             transform: translateY(-2px);
         }
 
-        #dimension-info {
-            font-size: 0.9em;
-            color: #aaa;
-            text-align: center;
-        }
-
         #rotation-controls {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 8px;
             margin-top: 10px;
         }
 
         .rotation-btn {
             padding: 8px 12px;
+            font-size: 0.85em;
+        }
+
+        #hint {
             font-size: 0.9em;
+            color: #aaa;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1>4次元三目並べ - Tesseract</h1>
-        <canvas id="canvas" width="800" height="600"></canvas>
+        <h1>4次元回転三目並べ</h1>
+        <canvas id="canvas" width="900" height="600"></canvas>
         <div id="info">
             <div id="status">プレイヤー X の番です</div>
-            <div id="dimension-info">現在の4次元座標: W=<span id="w-coord">0</span></div>
+            <div id="hint">4次元立方体を回転させてセルをクリック。4つ並べたら勝利！</div>
             <div id="controls">
-                <button onclick="game.changeW(-1)">W軸 ← (前の4次元層)</button>
-                <button onclick="game.changeW(1)">W軸 → (次の4次元層)</button>
-                <button onclick="game.reset()">リセット</button>
-                <button onclick="game.toggleAutoRotate()">自動回転 <span id="rotate-status">ON</span></button>
+                <button onclick="game.reset()">🔄 リセット</button>
+                <button onclick="game.toggleAutoRotate()">
+                    <span id="rotate-status">⏸ 自動回転停止</span>
+                </button>
+                <button onclick="game.changeRotationSpeed(-1)">🐌 回転遅く</button>
+                <button onclick="game.changeRotationSpeed(1)">🚀 回転速く</button>
             </div>
             <div id="rotation-controls">
-                <button class="rotation-btn" onclick="game.rotateXY()">XY回転</button>
-                <button class="rotation-btn" onclick="game.rotateXZ()">XZ回転</button>
-                <button class="rotation-btn" onclick="game.rotateXW()">XW回転</button>
-                <button class="rotation-btn" onclick="game.rotateYZ()">YZ回転</button>
-                <button class="rotation-btn" onclick="game.rotateYW()">YW回転</button>
-                <button class="rotation-btn" onclick="game.rotateZW()">ZW回転</button>
+                <button class="rotation-btn" onclick="game.manualRotate('xy')">⟲ XY回転</button>
+                <button class="rotation-btn" onclick="game.manualRotate('xz')">⟲ XZ回転</button>
+                <button class="rotation-btn" onclick="game.manualRotate('xw')">⟲ XW回転 ✨</button>
+                <button class="rotation-btn" onclick="game.manualRotate('yz')">⟲ YZ回転</button>
+                <button class="rotation-btn" onclick="game.manualRotate('yw')">⟲ YW回転 ✨</button>
+                <button class="rotation-btn" onclick="game.manualRotate('zw')">⟲ ZW回転 ✨</button>
             </div>
         </div>
     </div>
 
     <script>
-        class Tesseract4D {
+        class Tesseract4DGame {
             constructor() {
                 this.canvas = document.getElementById('canvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.width = this.canvas.width;
                 this.height = this.canvas.height;
 
-                // ゲームの状態
-                this.gridSize = 4; // 4x4x4x4のグリッド
+                // ゲーム設定
+                this.gridSize = 4; // 4x4x4x4
+                this.cellSpacing = 0.6; // セル間の間隔
+                this.cellSize = 0.15; // 各セルの大きさ
+
+                // ゲーム状態
                 this.board = this.createEmptyBoard();
                 this.currentPlayer = 'X';
-                this.currentW = 0; // 現在表示している4次元の層
                 this.gameOver = false;
                 this.winner = null;
 
-                // 回転角度（4次元）
+                // 4次元回転角度
                 this.rotations = {
                     xy: 0, xz: 0, xw: 0,
                     yz: 0, yw: 0, zw: 0
                 };
 
+                // 回転設定
                 this.autoRotate = true;
-                this.rotationSpeed = 0.005;
+                this.rotationSpeed = 1;
+                this.baseSpeed = 0.003;
 
-                // テッセラクトの頂点を生成
-                this.tesseractVertices = this.generateTesseractVertices();
-                this.tesseractEdges = this.generateTesseractEdges();
+                // セルの4次元座標
+                this.cells = this.generateCells();
 
-                // マウスイベント
+                // マウスの位置
+                this.mousePos = { x: 0, y: 0 };
+                this.hoveredCell = null;
+
+                // イベントリスナー
                 this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
 
-                // アニメーションループ
+                // アニメーション開始
                 this.animate();
             }
 
@@ -196,82 +210,70 @@
                 return board;
             }
 
-            generateTesseractVertices() {
-                const vertices = [];
-                for (let w = 0; w < 2; w++) {
-                    for (let z = 0; z < 2; z++) {
-                        for (let y = 0; y < 2; y++) {
-                            for (let x = 0; x < 2; x++) {
-                                vertices.push([
-                                    x * 2 - 1,
-                                    y * 2 - 1,
-                                    z * 2 - 1,
-                                    w * 2 - 1
-                                ]);
+            generateCells() {
+                const cells = [];
+                const offset = (this.gridSize - 1) * this.cellSpacing / 2;
+
+                for (let w = 0; w < this.gridSize; w++) {
+                    for (let z = 0; z < this.gridSize; z++) {
+                        for (let y = 0; y < this.gridSize; y++) {
+                            for (let x = 0; x < this.gridSize; x++) {
+                                cells.push({
+                                    pos4d: [
+                                        x * this.cellSpacing - offset,
+                                        y * this.cellSpacing - offset,
+                                        z * this.cellSpacing - offset,
+                                        w * this.cellSpacing - offset
+                                    ],
+                                    coords: { x, y, z, w },
+                                    value: null
+                                });
                             }
                         }
                     }
                 }
-                return vertices;
-            }
-
-            generateTesseractEdges() {
-                const edges = [];
-                const vertices = this.tesseractVertices;
-
-                for (let i = 0; i < vertices.length; i++) {
-                    for (let j = i + 1; j < vertices.length; j++) {
-                        let diff = 0;
-                        for (let k = 0; k < 4; k++) {
-                            if (vertices[i][k] !== vertices[j][k]) diff++;
-                        }
-                        if (diff === 1) {
-                            edges.push([i, j]);
-                        }
-                    }
-                }
-                return edges;
+                return cells;
             }
 
             rotate4D(point, rotations) {
                 let [x, y, z, w] = point;
 
-                // XY平面の回転
+                // XY回転
                 if (rotations.xy) {
                     const cos = Math.cos(rotations.xy);
                     const sin = Math.sin(rotations.xy);
                     [x, y] = [x * cos - y * sin, x * sin + y * cos];
                 }
 
-                // XZ平面の回転
+                // XZ回転
                 if (rotations.xz) {
                     const cos = Math.cos(rotations.xz);
                     const sin = Math.sin(rotations.xz);
                     [x, z] = [x * cos - z * sin, x * sin + z * cos];
                 }
 
-                // XW平面の回転
+                // XW回転（4次元！）
                 if (rotations.xw) {
                     const cos = Math.cos(rotations.xw);
                     const sin = Math.sin(rotations.xw);
                     [x, w] = [x * cos - w * sin, x * sin + w * cos];
                 }
 
-                // YZ平面の回転
+                // YZ回転
                 if (rotations.yz) {
                     const cos = Math.cos(rotations.yz);
                     const sin = Math.sin(rotations.yz);
                     [y, z] = [y * cos - z * sin, y * sin + z * cos];
                 }
 
-                // YW平面の回転
+                // YW回転（4次元！）
                 if (rotations.yw) {
                     const cos = Math.cos(rotations.yw);
                     const sin = Math.sin(rotations.yw);
                     [y, w] = [y * cos - w * sin, y * sin + w * cos];
                 }
 
-                // ZW平面の回転
+                // ZW回転（4次元！）
                 if (rotations.zw) {
                     const cos = Math.cos(rotations.zw);
                     const sin = Math.sin(rotations.zw);
@@ -282,160 +284,118 @@
             }
 
             project4Dto3D(point) {
-                const distance = 2;
+                const distance = 2.5;
                 const [x, y, z, w] = point;
                 const factor = distance / (distance - w);
-                return [x * factor, y * factor, z * factor];
+                return [x * factor, y * factor, z * factor, w];
             }
 
             project3Dto2D(point) {
-                const distance = 3;
+                const distance = 4;
                 const [x, y, z] = point;
                 const factor = distance / (distance - z);
-                const screenX = x * factor * 150 + this.width / 2;
-                const screenY = -y * factor * 150 + this.height / 2;
-                return [screenX, screenY, z];
+                const scale = 200;
+                const screenX = x * factor * scale + this.width / 2;
+                const screenY = -y * factor * scale + this.height / 2;
+                return [screenX, screenY, z, factor];
             }
 
-            drawTesseract() {
+            drawCell(cell, rotatedPos, projectedPos, isHovered) {
                 const ctx = this.ctx;
+                const [screenX, screenY, depth, perspective] = projectedPos;
+                const [x3d, y3d, z3d, w] = rotatedPos;
 
-                // 回転した頂点を計算
-                const rotatedVertices = this.tesseractVertices.map(v =>
-                    this.rotate4D(v, this.rotations)
-                );
+                // 深度とW座標に基づいて色を決定
+                const depthFactor = (depth + 3) / 6;
+                const wFactor = (w + 2) / 4;
 
-                // 4D -> 3D -> 2D投影
-                const projected = rotatedVertices.map(v => {
-                    const v3d = this.project4Dto3D(v);
-                    return this.project3Dto2D(v3d);
-                });
+                // 4次元の位置に基づいて色相を変化
+                const hue = (wFactor * 120 + 240) % 360;
+                const opacity = 0.3 + depthFactor * 0.6;
 
-                // エッジを描画
-                this.tesseractEdges.forEach(([i, j]) => {
-                    const [x1, y1, z1] = projected[i];
-                    const [x2, y2, z2] = projected[j];
+                // セルのサイズ（透視効果を適用）
+                const size = this.cellSize * 200 * perspective;
 
-                    // 深度に基づいて色と太さを変更
-                    const avgZ = (z1 + z2) / 2;
-                    const opacity = 0.3 + (avgZ + 2) / 8;
-                    const hue = ((z1 + 2) / 4 * 120 + 240) % 360;
+                // セルの値に応じて描画
+                const value = this.board[cell.coords.w][cell.coords.z][cell.coords.y][cell.coords.x];
 
-                    ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${opacity})`;
-                    ctx.lineWidth = 1 + opacity;
+                // ホバー効果
+                if (isHovered && !this.gameOver) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = `hsla(${hue}, 100%, 70%, 0.8)`;
+                }
 
-                    ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
-                    ctx.stroke();
-                });
+                // セルの背景
+                ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${opacity * 0.3})`;
+                ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${opacity})`;
+                ctx.lineWidth = isHovered ? 3 : 1.5;
 
-                // 頂点を描画
-                projected.forEach(([x, y, z], i) => {
-                    const size = 3 + (z + 2) / 2;
-                    const hue = ((z + 2) / 4 * 120 + 240) % 360;
-                    const opacity = 0.5 + (z + 2) / 8;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
 
-                    ctx.fillStyle = `hsla(${hue}, 100%, 70%, ${opacity})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, size, 0, Math.PI * 2);
-                    ctx.fill();
+                ctx.shadowBlur = 0;
 
-                    // グローエフェクト
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = `hsla(${hue}, 100%, 70%, ${opacity})`;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                });
-            }
+                // X または O を描画
+                if (value) {
+                    ctx.font = `bold ${size * 1.5}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
 
-            drawGameGrid() {
-                const ctx = this.ctx;
-                const gridSize = this.gridSize;
-                const currentW = this.currentW;
-                const cellSize = 80;
-                const startX = this.width / 2 - (gridSize * cellSize) / 2;
-                const startY = this.height / 2 - (gridSize * cellSize) / 2;
-
-                // 3D層を描画（現在のW層）
-                for (let z = 0; z < gridSize; z++) {
-                    const zOffset = z * 15;
-                    const zOpacity = 1 - z * 0.15;
-
-                    for (let y = 0; y < gridSize; y++) {
-                        for (let x = 0; x < gridSize; x++) {
-                            const px = startX + x * cellSize + zOffset;
-                            const py = startY + y * cellSize + zOffset;
-
-                            // セルの枠
-                            ctx.strokeStyle = `rgba(100, 200, 255, ${0.3 * zOpacity})`;
-                            ctx.lineWidth = 1;
-                            ctx.strokeRect(px, py, cellSize - 5, cellSize - 5);
-
-                            // セルの値を描画
-                            const value = this.board[currentW][z][y][x];
-                            if (value) {
-                                ctx.font = 'bold 32px Arial';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-
-                                if (value === 'X') {
-                                    ctx.fillStyle = `rgba(255, 100, 255, ${zOpacity})`;
-                                    ctx.shadowBlur = 15;
-                                    ctx.shadowColor = 'rgba(255, 100, 255, 0.8)';
-                                } else {
-                                    ctx.fillStyle = `rgba(100, 255, 255, ${zOpacity})`;
-                                    ctx.shadowBlur = 15;
-                                    ctx.shadowColor = 'rgba(100, 255, 255, 0.8)';
-                                }
-
-                                ctx.fillText(value, px + cellSize / 2 - 2.5, py + cellSize / 2 - 2.5);
-                                ctx.shadowBlur = 0;
-                            }
-
-                            // ホバーエフェクト用の情報を保存
-                            if (!this.cellPositions) this.cellPositions = [];
-                            this.cellPositions.push({x, y, z, w: currentW, px, py, size: cellSize - 5});
-                        }
+                    if (value === 'X') {
+                        ctx.fillStyle = `rgba(255, 100, 255, ${opacity})`;
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = 'rgba(255, 100, 255, 0.9)';
+                    } else {
+                        ctx.fillStyle = `rgba(100, 255, 255, ${opacity})`;
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = 'rgba(100, 255, 255, 0.9)';
                     }
+
+                    ctx.fillText(value, screenX, screenY);
+                    ctx.shadowBlur = 0;
+                }
+
+                // デバッグ用：セルのインデックスを表示（小さく）
+                if (isHovered) {
+                    ctx.font = '10px monospace';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    const coords = `(${cell.coords.x},${cell.coords.y},${cell.coords.z},${cell.coords.w})`;
+                    ctx.fillText(coords, screenX, screenY + size + 12);
                 }
             }
 
-            handleClick(e) {
-                if (this.gameOver) return;
-
+            handleMouseMove(e) {
                 const rect = this.canvas.getBoundingClientRect();
-                const mx = e.clientX - rect.left;
-                const my = e.clientY - rect.top;
+                this.mousePos.x = e.clientX - rect.left;
+                this.mousePos.y = e.clientY - rect.top;
+            }
 
-                // クリックされたセルを見つける
-                if (!this.cellPositions) return;
+            handleClick(e) {
+                if (this.gameOver || !this.hoveredCell) return;
 
-                for (const cell of this.cellPositions) {
-                    if (mx >= cell.px && mx <= cell.px + cell.size &&
-                        my >= cell.py && my <= cell.py + cell.size) {
+                const cell = this.hoveredCell;
+                const { x, y, z, w } = cell.coords;
 
-                        // セルが空なら配置
-                        if (!this.board[cell.w][cell.z][cell.y][cell.x]) {
-                            this.board[cell.w][cell.z][cell.y][cell.x] = this.currentPlayer;
+                // セルが空なら配置
+                if (!this.board[w][z][y][x]) {
+                    this.board[w][z][y][x] = this.currentPlayer;
 
-                            // 勝利判定
-                            if (this.checkWin(cell.w, cell.z, cell.y, cell.x)) {
-                                this.gameOver = true;
-                                this.winner = this.currentPlayer;
-                                document.getElementById('status').textContent =
-                                    `プレイヤー ${this.currentPlayer} の勝利！`;
-                            } else if (this.isBoardFull()) {
-                                this.gameOver = true;
-                                document.getElementById('status').textContent = '引き分け！';
-                            } else {
-                                // プレイヤー交代
-                                this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
-                                document.getElementById('status').textContent =
-                                    `プレイヤー ${this.currentPlayer} の番です`;
-                            }
-                        }
-                        break;
+                    // 勝利判定
+                    if (this.checkWin(w, z, y, x)) {
+                        this.gameOver = true;
+                        this.winner = this.currentPlayer;
+                        document.getElementById('status').textContent =
+                            `🎉 プレイヤー ${this.currentPlayer} の勝利！`;
+                    } else if (this.isBoardFull()) {
+                        this.gameOver = true;
+                        document.getElementById('status').textContent = '引き分け！';
+                    } else {
+                        // プレイヤー交代
+                        this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+                        document.getElementById('status').textContent =
+                            `プレイヤー ${this.currentPlayer} の番です`;
                     }
                 }
             }
@@ -444,10 +404,8 @@
                 const player = this.currentPlayer;
                 const size = this.gridSize;
 
-                // 4次元での全方向をチェック
+                // 全ての方向ベクトルを生成
                 const directions = [];
-
-                // 4次元での全ての可能な方向ベクトルを生成
                 for (let dw = -1; dw <= 1; dw++) {
                     for (let dz = -1; dz <= 1; dz++) {
                         for (let dy = -1; dy <= 1; dy++) {
@@ -459,7 +417,7 @@
                     }
                 }
 
-                // 各方向について4つ並んでいるかチェック
+                // 各方向で4つ並んでいるかチェック
                 for (const [dw, dz, dy, dx] of directions) {
                     let count = 1;
 
@@ -516,59 +474,122 @@
                 return true;
             }
 
-            changeW(delta) {
-                this.currentW = (this.currentW + delta + this.gridSize) % this.gridSize;
-                document.getElementById('w-coord').textContent = this.currentW;
-            }
-
             reset() {
                 this.board = this.createEmptyBoard();
                 this.currentPlayer = 'X';
-                this.currentW = 0;
                 this.gameOver = false;
                 this.winner = null;
                 document.getElementById('status').textContent = 'プレイヤー X の番です';
-                document.getElementById('w-coord').textContent = '0';
             }
 
             toggleAutoRotate() {
                 this.autoRotate = !this.autoRotate;
                 document.getElementById('rotate-status').textContent =
-                    this.autoRotate ? 'ON' : 'OFF';
+                    this.autoRotate ? '⏸ 自動回転停止' : '▶ 自動回転開始';
             }
 
-            rotateXY() { this.rotations.xy += 0.1; }
-            rotateXZ() { this.rotations.xz += 0.1; }
-            rotateXW() { this.rotations.xw += 0.1; }
-            rotateYZ() { this.rotations.yz += 0.1; }
-            rotateYW() { this.rotations.yw += 0.1; }
-            rotateZW() { this.rotations.zw += 0.1; }
+            changeRotationSpeed(delta) {
+                this.rotationSpeed = Math.max(0.1, Math.min(5, this.rotationSpeed + delta * 0.5));
+            }
+
+            manualRotate(plane) {
+                this.rotations[plane] += 0.15;
+            }
 
             animate() {
-                // 背景をクリア
-                this.ctx.fillStyle = 'rgba(10, 10, 26, 0.3)';
+                // 背景をクリア（トレイルエフェクト）
+                this.ctx.fillStyle = 'rgba(10, 10, 26, 0.2)';
                 this.ctx.fillRect(0, 0, this.width, this.height);
 
                 // 自動回転
                 if (this.autoRotate) {
-                    this.rotations.xw += this.rotationSpeed;
-                    this.rotations.yz += this.rotationSpeed * 0.7;
-                    this.rotations.zw += this.rotationSpeed * 0.5;
+                    this.rotations.xw += this.baseSpeed * this.rotationSpeed;
+                    this.rotations.yz += this.baseSpeed * this.rotationSpeed * 0.7;
+                    this.rotations.zw += this.baseSpeed * this.rotationSpeed * 0.5;
                 }
 
-                // テッセラクトを描画
-                this.drawTesseract();
+                // 全セルを回転・投影・ソート
+                const projectedCells = this.cells.map(cell => {
+                    // ボード状態を更新
+                    cell.value = this.board[cell.coords.w][cell.coords.z][cell.coords.y][cell.coords.x];
 
-                // ゲームグリッドを描画
-                this.cellPositions = [];
-                this.drawGameGrid();
+                    const rotated = this.rotate4D(cell.pos4d, this.rotations);
+                    const projected3d = this.project4Dto3D(rotated);
+                    const projected2d = this.project3Dto2D(projected3d);
+
+                    return {
+                        cell,
+                        rotated,
+                        projected: projected2d,
+                        depth: projected2d[2] // Z座標でソート
+                    };
+                });
+
+                // 深度ソート（奥から手前）
+                projectedCells.sort((a, b) => a.depth - b.depth);
+
+                // ホバー検出
+                this.hoveredCell = null;
+                let minDist = 20; // ホバー検出の最小距離
+
+                // 全セルを描画
+                projectedCells.forEach(({ cell, rotated, projected, depth }) => {
+                    const [screenX, screenY] = projected;
+                    const dist = Math.hypot(this.mousePos.x - screenX, this.mousePos.y - screenY);
+
+                    if (dist < minDist && !cell.value) {
+                        minDist = dist;
+                        this.hoveredCell = cell;
+                    }
+
+                    const isHovered = (this.hoveredCell === cell);
+                    this.drawCell(cell, rotated, projected, isHovered);
+                });
+
+                // 接続線を描画（オプション：テッセラクトのエッジ）
+                this.drawConnections(projectedCells);
 
                 requestAnimationFrame(() => this.animate());
             }
+
+            drawConnections(projectedCells) {
+                const ctx = this.ctx;
+
+                // 隣接セルを接続（グリッド構造を可視化）
+                projectedCells.forEach(({ cell, projected }) => {
+                    const [x1, y1, depth] = projected;
+                    const { x, y, z, w } = cell.coords;
+
+                    // X軸方向の接続
+                    if (x < this.gridSize - 1) {
+                        const neighborIndex = this.getCellIndex(x + 1, y, z, w);
+                        const neighbor = projectedCells[neighborIndex];
+                        if (neighbor) {
+                            const [x2, y2, depth2] = neighbor.projected;
+                            const avgDepth = (depth + depth2) / 2;
+                            const opacity = 0.05 + (avgDepth + 3) / 30;
+
+                            ctx.strokeStyle = `rgba(100, 200, 255, ${opacity})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                    }
+                });
+            }
+
+            getCellIndex(x, y, z, w) {
+                return w * this.gridSize * this.gridSize * this.gridSize +
+                       z * this.gridSize * this.gridSize +
+                       y * this.gridSize +
+                       x;
+            }
         }
 
-        // ゲームを初期化
-        const game = new Tesseract4D();
+        // ゲーム初期化
+        const game = new Tesseract4DGame();
     </script>
 </body>
 </html>
