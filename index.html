@@ -67,30 +67,33 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
             pointer-events: auto;
         }
 
-        #rotation-mode {
+        .rotation-control-group {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .rotation-label {
-            font-size: 0.9em;
+            font-size: 0.85em;
             color: #aaa;
-            margin-right: 5px;
+        }
+
+        .rotation-mode {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .rotation-toggle {
-            padding: 8px 16px;
-            font-size: 0.9em;
+            padding: 6px 12px;
+            font-size: 0.85em;
             background: rgba(100, 100, 100, 0.3);
             border: 2px solid rgba(150, 150, 150, 0.5);
-            border-radius: 8px;
+            border-radius: 6px;
             color: #bbb;
             cursor: pointer;
             transition: all 0.3s;
@@ -104,13 +107,9 @@
             box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
         }
 
-        .rotation-toggle.dimension-4 {
-            position: relative;
-        }
-
         .rotation-toggle.dimension-4::after {
             content: '✨';
-            margin-left: 4px;
+            margin-left: 3px;
         }
 
         #action-buttons {
@@ -121,8 +120,8 @@
         }
 
         button {
-            padding: 10px 20px;
-            font-size: 1em;
+            padding: 8px 16px;
+            font-size: 0.95em;
             background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
             border: 2px solid rgba(255, 0, 255, 0.5);
             border-radius: 8px;
@@ -138,10 +137,10 @@
         }
 
         #hint {
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: #888;
             text-align: center;
-            line-height: 1.4;
+            line-height: 1.3;
         }
 
         @media (max-width: 600px) {
@@ -150,18 +149,22 @@
                 padding: 10px 15px;
             }
 
+            .rotation-label {
+                font-size: 0.75em;
+            }
+
             .rotation-toggle {
-                padding: 6px 12px;
-                font-size: 0.85em;
+                padding: 5px 10px;
+                font-size: 0.8em;
             }
 
             button {
-                padding: 8px 16px;
-                font-size: 0.9em;
+                padding: 7px 14px;
+                font-size: 0.85em;
             }
 
             #hint {
-                font-size: 0.75em;
+                font-size: 0.7em;
             }
         }
     </style>
@@ -175,20 +178,35 @@
         </div>
 
         <div id="controls">
-            <div id="rotation-mode">
-                <span class="rotation-label">回転軸:</span>
-                <div class="rotation-toggle" data-axis="xy">XY</div>
-                <div class="rotation-toggle" data-axis="xz">XZ</div>
-                <div class="rotation-toggle dimension-4 active" data-axis="xw">XW</div>
-                <div class="rotation-toggle" data-axis="yz">YZ</div>
-                <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
-                <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+            <div class="rotation-control-group">
+                <div class="rotation-label">↔ 水平スワイプ:</div>
+                <div class="rotation-mode" id="horizontal-rotation">
+                    <div class="rotation-toggle" data-axis="xy">XY</div>
+                    <div class="rotation-toggle" data-axis="xz">XZ</div>
+                    <div class="rotation-toggle dimension-4 active" data-axis="xw">XW</div>
+                    <div class="rotation-toggle" data-axis="yz">YZ</div>
+                    <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
+                    <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+                </div>
             </div>
+
+            <div class="rotation-control-group">
+                <div class="rotation-label">↕ 垂直スワイプ:</div>
+                <div class="rotation-mode" id="vertical-rotation">
+                    <div class="rotation-toggle" data-axis="xy">XY</div>
+                    <div class="rotation-toggle" data-axis="xz">XZ</div>
+                    <div class="rotation-toggle dimension-4" data-axis="xw">XW</div>
+                    <div class="rotation-toggle active" data-axis="yz">YZ</div>
+                    <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
+                    <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+                </div>
+            </div>
+
             <div id="action-buttons">
                 <button id="reset-btn">🔄 リセット</button>
                 <button id="auto-rotate-btn">⏸ 自動回転</button>
             </div>
-            <div id="hint">スワイプ/ドラッグで回転 | タップ/クリックでマーク配置</div>
+            <div id="hint">水平・垂直スワイプで別々の軸を回転 | タップでマーク配置</div>
         </div>
     </div>
 
@@ -204,16 +222,19 @@
 
                 // 回転状態
                 this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
-                this.currentRotationAxis = 'xw';
+                this.horizontalRotationAxis = 'xw';
+                this.verticalRotationAxis = 'yz';
                 this.autoRotate = true;
                 this.rotationSpeed = 0.005;
 
                 // タッチ/ドラッグ制御
                 this.isDragging = false;
-                this.previousTouch = { x: 0, y: 0 };
+                this.dragStartPos = { x: 0, y: 0 };
+                this.swipeDirection = null; // 'horizontal' or 'vertical'
 
                 this.setupThreeJS();
                 this.createGrid();
+                this.createGridConnections();
                 this.setupControls();
                 this.animate();
             }
@@ -331,6 +352,123 @@
                 this.cellMeshes.push(selectionMesh);
             }
 
+            createGridConnections() {
+                // 4次元グリッド全体の接続線を作成
+                this.connectionLines = [];
+
+                const offset = (this.gridSize - 1) * this.cellSpacing / 2;
+
+                // X, Y, Z, W の4つの軸方向に接続線を作成
+                for (let w = 0; w < this.gridSize; w++) {
+                    for (let z = 0; z < this.gridSize; z++) {
+                        for (let y = 0; y < this.gridSize; y++) {
+                            for (let x = 0; x < this.gridSize; x++) {
+                                const pos4d = [
+                                    x * this.cellSpacing - offset,
+                                    y * this.cellSpacing - offset,
+                                    z * this.cellSpacing - offset,
+                                    w * this.cellSpacing - offset
+                                ];
+
+                                // X軸方向の接続
+                                if (x < this.gridSize - 1) {
+                                    const nextPos4d = [
+                                        (x + 1) * this.cellSpacing - offset,
+                                        y * this.cellSpacing - offset,
+                                        z * this.cellSpacing - offset,
+                                        w * this.cellSpacing - offset
+                                    ];
+                                    this.createConnectionLine(pos4d, nextPos4d);
+                                }
+
+                                // Y軸方向の接続
+                                if (y < this.gridSize - 1) {
+                                    const nextPos4d = [
+                                        x * this.cellSpacing - offset,
+                                        (y + 1) * this.cellSpacing - offset,
+                                        z * this.cellSpacing - offset,
+                                        w * this.cellSpacing - offset
+                                    ];
+                                    this.createConnectionLine(pos4d, nextPos4d);
+                                }
+
+                                // Z軸方向の接続
+                                if (z < this.gridSize - 1) {
+                                    const nextPos4d = [
+                                        x * this.cellSpacing - offset,
+                                        y * this.cellSpacing - offset,
+                                        (z + 1) * this.cellSpacing - offset,
+                                        w * this.cellSpacing - offset
+                                    ];
+                                    this.createConnectionLine(pos4d, nextPos4d);
+                                }
+
+                                // W軸方向の接続
+                                if (w < this.gridSize - 1) {
+                                    const nextPos4d = [
+                                        x * this.cellSpacing - offset,
+                                        y * this.cellSpacing - offset,
+                                        z * this.cellSpacing - offset,
+                                        (w + 1) * this.cellSpacing - offset
+                                    ];
+                                    this.createConnectionLine(pos4d, nextPos4d);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            createConnectionLine(pos4d1, pos4d2) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    0, 0, 0,  // 始点（後で更新）
+                    0, 0, 0   // 終点（後で更新）
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x4444ff,
+                    transparent: true,
+                    opacity: 0.15
+                });
+
+                const line = new THREE.Line(geometry, material);
+                line.userData = { pos4d1, pos4d2 };
+
+                this.scene.add(line);
+                this.connectionLines.push(line);
+            }
+
+            updateConnectionLines() {
+                this.connectionLines.forEach(line => {
+                    const { pos4d1, pos4d2 } = line.userData;
+
+                    // 4D回転と投影を適用
+                    const rotated1 = this.rotate4D(pos4d1, this.rotations);
+                    const rotated2 = this.rotate4D(pos4d2, this.rotations);
+                    const [x1, y1, z1, w1] = this.project4Dto3D(rotated1);
+                    const [x2, y2, z2, w2] = this.project4Dto3D(rotated2);
+
+                    // ジオメトリの位置を更新
+                    const positions = line.geometry.attributes.position.array;
+                    positions[0] = x1;
+                    positions[1] = y1;
+                    positions[2] = z1;
+                    positions[3] = x2;
+                    positions[4] = y2;
+                    positions[5] = z2;
+                    line.geometry.attributes.position.needsUpdate = true;
+
+                    // W座標に基づいて色と不透明度を調整
+                    const avgW = (w1 + w2) / 2;
+                    const wFactor = (avgW + 2) / 4;
+                    const hue = (wFactor * 0.33 + 0.5) % 1;
+                    line.material.color.setHSL(hue, 0.7, 0.4);
+                    line.material.opacity = 0.1 + wFactor * 0.15;
+                });
+            }
+
             createMarker(cell, player) {
                 // X または O のマーカーを作成
                 const canvas = document.createElement('canvas');
@@ -431,13 +569,23 @@
             setupControls() {
                 const canvas = this.renderer.domElement;
 
-                // 回転軸トグル
-                document.querySelectorAll('.rotation-toggle').forEach(toggle => {
+                // 水平スワイプ用の回転軸トグル
+                document.querySelectorAll('#horizontal-rotation .rotation-toggle').forEach(toggle => {
                     toggle.addEventListener('click', () => {
-                        document.querySelectorAll('.rotation-toggle').forEach(t =>
+                        document.querySelectorAll('#horizontal-rotation .rotation-toggle').forEach(t =>
                             t.classList.remove('active'));
                         toggle.classList.add('active');
-                        this.currentRotationAxis = toggle.dataset.axis;
+                        this.horizontalRotationAxis = toggle.dataset.axis;
+                    });
+                });
+
+                // 垂直スワイプ用の回転軸トグル
+                document.querySelectorAll('#vertical-rotation .rotation-toggle').forEach(toggle => {
+                    toggle.addEventListener('click', () => {
+                        document.querySelectorAll('#vertical-rotation .rotation-toggle').forEach(t =>
+                            t.classList.remove('active'));
+                        toggle.classList.add('active');
+                        this.verticalRotationAxis = toggle.dataset.axis;
                     });
                 });
 
@@ -460,25 +608,41 @@
 
             onPointerDown(e) {
                 this.isDragging = true;
-                this.previousTouch = { x: e.clientX, y: e.clientY };
+                this.dragStartPos = { x: e.clientX, y: e.clientY };
+                this.swipeDirection = null;
             }
 
             onPointerMove(e) {
                 if (!this.isDragging) return;
 
-                const deltaX = e.clientX - this.previousTouch.x;
-                const deltaY = e.clientY - this.previousTouch.y;
+                const deltaX = e.clientX - this.dragStartPos.x;
+                const deltaY = e.clientY - this.dragStartPos.y;
 
-                const sensitivity = 0.01;
-                const delta = (deltaX + deltaY) * sensitivity;
+                // スワイプ方向の判定（最初の大きな動きで確定）
+                if (!this.swipeDirection) {
+                    const absDeltaX = Math.abs(deltaX);
+                    const absDeltaY = Math.abs(deltaY);
 
-                this.rotations[this.currentRotationAxis] += delta;
+                    if (absDeltaX > 5 || absDeltaY > 5) {
+                        this.swipeDirection = absDeltaX > absDeltaY ? 'horizontal' : 'vertical';
+                    }
+                }
 
-                this.previousTouch = { x: e.clientX, y: e.clientY };
+                // 選択された方向の回転軸を使用
+                if (this.swipeDirection === 'horizontal') {
+                    const sensitivity = 0.01;
+                    this.rotations[this.horizontalRotationAxis] += deltaX * sensitivity;
+                } else if (this.swipeDirection === 'vertical') {
+                    const sensitivity = 0.01;
+                    this.rotations[this.verticalRotationAxis] -= deltaY * sensitivity;
+                }
+
+                this.dragStartPos = { x: e.clientX, y: e.clientY };
             }
 
             onPointerUp(e) {
                 this.isDragging = false;
+                this.swipeDirection = null;
             }
 
             onClick(e) {
@@ -599,6 +763,7 @@
                 }
 
                 this.updateCellPositions();
+                this.updateConnectionLines();
                 this.renderer.render(this.scene, this.camera);
             }
         }
