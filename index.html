@@ -2,13 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4次元三目並べ - Rotating Tesseract</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>4次元三目並べ - Rotating 4D Grid</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: none;
         }
 
         body {
@@ -17,74 +18,110 @@
             color: #fff;
             overflow: hidden;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         #container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
             width: 100%;
             height: 100%;
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            text-align: center;
-            background: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: glow 3s ease-in-out infinite;
-            margin-top: 20px;
-        }
-
-        @keyframes glow {
-            0%, 100% { filter: brightness(1) drop-shadow(0 0 20px rgba(255, 0, 255, 0.5)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 255, 255, 0.8)); }
-        }
-
-        #canvas {
-            border: 2px solid rgba(255, 0, 255, 0.3);
-            border-radius: 10px;
-            box-shadow: 0 0 50px rgba(255, 0, 255, 0.3),
-                        inset 0 0 50px rgba(0, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.5);
-            cursor: pointer;
-        }
-
-        #info {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px 40px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 0, 255, 0.2);
-            max-width: 90%;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            padding: 15px;
+            z-index: 10;
         }
 
         #status {
-            font-size: 1.5em;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 0, 255, 0.3);
+            font-size: 1.2em;
             color: #00ffff;
             text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            display: inline-block;
+            pointer-events: auto;
         }
 
         #controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 0, 255, 0.3);
+            padding: 15px;
             display: flex;
+            flex-direction: column;
             gap: 15px;
+            pointer-events: auto;
+        }
+
+        #rotation-mode {
+            display: flex;
             flex-wrap: wrap;
+            gap: 8px;
             justify-content: center;
+            align-items: center;
+        }
+
+        .rotation-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-right: 5px;
+        }
+
+        .rotation-toggle {
+            padding: 8px 16px;
+            font-size: 0.9em;
+            background: rgba(100, 100, 100, 0.3);
+            border: 2px solid rgba(150, 150, 150, 0.5);
+            border-radius: 8px;
+            color: #bbb;
+            cursor: pointer;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .rotation-toggle.active {
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.5), rgba(0, 255, 255, 0.5));
+            border-color: rgba(255, 0, 255, 0.8);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+        }
+
+        .rotation-toggle.dimension-4 {
+            position: relative;
+        }
+
+        .rotation-toggle.dimension-4::after {
+            content: '✨';
+            margin-left: 4px;
+        }
+
+        #action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
         button {
-            padding: 12px 24px;
+            padding: 10px 20px;
             font-size: 1em;
             background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
             border: 2px solid rgba(255, 0, 255, 0.5);
@@ -92,104 +129,92 @@
             color: #fff;
             cursor: pointer;
             transition: all 0.3s;
-            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
         }
 
-        button:hover {
+        button:hover, button:active {
             background: linear-gradient(135deg, rgba(255, 0, 255, 0.5), rgba(0, 255, 255, 0.5));
             box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
             transform: translateY(-2px);
         }
 
-        #rotation-controls {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .rotation-btn {
-            padding: 8px 12px;
-            font-size: 0.85em;
-        }
-
         #hint {
-            font-size: 0.9em;
-            color: #aaa;
+            font-size: 0.85em;
+            color: #888;
             text-align: center;
-            max-width: 600px;
-            line-height: 1.5;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 600px) {
+            #status {
+                font-size: 1em;
+                padding: 10px 15px;
+            }
+
+            .rotation-toggle {
+                padding: 6px 12px;
+                font-size: 0.85em;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 0.9em;
+            }
+
+            #hint {
+                font-size: 0.75em;
+            }
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1>4次元回転三目並べ</h1>
-        <canvas id="canvas" width="900" height="600"></canvas>
-        <div id="info">
+        <div id="canvas-container"></div>
+
+        <div id="ui-overlay">
             <div id="status">プレイヤー X の番です</div>
-            <div id="hint">4次元立方体を回転させてセルをクリック。4つ並べたら勝利！</div>
-            <div id="controls">
-                <button onclick="game.reset()">🔄 リセット</button>
-                <button onclick="game.toggleAutoRotate()">
-                    <span id="rotate-status">⏸ 自動回転停止</span>
-                </button>
-                <button onclick="game.changeRotationSpeed(-1)">🐌 回転遅く</button>
-                <button onclick="game.changeRotationSpeed(1)">🚀 回転速く</button>
+        </div>
+
+        <div id="controls">
+            <div id="rotation-mode">
+                <span class="rotation-label">回転軸:</span>
+                <div class="rotation-toggle" data-axis="xy">XY</div>
+                <div class="rotation-toggle" data-axis="xz">XZ</div>
+                <div class="rotation-toggle dimension-4 active" data-axis="xw">XW</div>
+                <div class="rotation-toggle" data-axis="yz">YZ</div>
+                <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
+                <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
             </div>
-            <div id="rotation-controls">
-                <button class="rotation-btn" onclick="game.manualRotate('xy')">⟲ XY回転</button>
-                <button class="rotation-btn" onclick="game.manualRotate('xz')">⟲ XZ回転</button>
-                <button class="rotation-btn" onclick="game.manualRotate('xw')">⟲ XW回転 ✨</button>
-                <button class="rotation-btn" onclick="game.manualRotate('yz')">⟲ YZ回転</button>
-                <button class="rotation-btn" onclick="game.manualRotate('yw')">⟲ YW回転 ✨</button>
-                <button class="rotation-btn" onclick="game.manualRotate('zw')">⟲ ZW回転 ✨</button>
+            <div id="action-buttons">
+                <button id="reset-btn">🔄 リセット</button>
+                <button id="auto-rotate-btn">⏸ 自動回転</button>
             </div>
+            <div id="hint">スワイプ/ドラッグで回転 | タップ/クリックでマーク配置</div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script>
         class Tesseract4DGame {
             constructor() {
-                this.canvas = document.getElementById('canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.width = this.canvas.width;
-                this.height = this.canvas.height;
-
-                // ゲーム設定
-                this.gridSize = 4; // 4x4x4x4
-                this.cellSpacing = 0.6; // セル間の間隔
-                this.cellSize = 0.15; // 各セルの大きさ
-
-                // ゲーム状態
+                this.gridSize = 4;
+                this.cellSpacing = 1.2;
                 this.board = this.createEmptyBoard();
                 this.currentPlayer = 'X';
                 this.gameOver = false;
-                this.winner = null;
 
-                // 4次元回転角度
-                this.rotations = {
-                    xy: 0, xz: 0, xw: 0,
-                    yz: 0, yw: 0, zw: 0
-                };
-
-                // 回転設定
+                // 回転状態
+                this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
+                this.currentRotationAxis = 'xw';
                 this.autoRotate = true;
-                this.rotationSpeed = 1;
-                this.baseSpeed = 0.003;
+                this.rotationSpeed = 0.005;
 
-                // セルの4次元座標
-                this.cells = this.generateCells();
+                // タッチ/ドラッグ制御
+                this.isDragging = false;
+                this.previousTouch = { x: 0, y: 0 };
 
-                // マウスの位置
-                this.mousePos = { x: 0, y: 0 };
-                this.hoveredCell = null;
-
-                // イベントリスナー
-                this.canvas.addEventListener('click', (e) => this.handleClick(e));
-                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-
-                // アニメーション開始
+                this.setupThreeJS();
+                this.createGrid();
+                this.setupControls();
                 this.animate();
             }
 
@@ -200,25 +225,64 @@
                     for (let z = 0; z < this.gridSize; z++) {
                         board[w][z] = [];
                         for (let y = 0; y < this.gridSize; y++) {
-                            board[w][z][y] = [];
-                            for (let x = 0; x < this.gridSize; x++) {
-                                board[w][z][y][x] = null;
-                            }
+                            board[w][z][y] = new Array(this.gridSize).fill(null);
                         }
                     }
                 }
                 return board;
             }
 
-            generateCells() {
-                const cells = [];
+            setupThreeJS() {
+                const container = document.getElementById('canvas-container');
+
+                // シーン
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a1a);
+                this.scene.fog = new THREE.Fog(0x0a0a1a, 10, 30);
+
+                // カメラ
+                this.camera = new THREE.PerspectiveCamera(
+                    60,
+                    container.clientWidth / container.clientHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 0, 12);
+                this.camera.lookAt(0, 0, 0);
+
+                // レンダラー
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(this.renderer.domElement);
+
+                // ライト
+                const ambientLight = new THREE.AmbientLight(0x404040, 1);
+                this.scene.add(ambientLight);
+
+                const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+
+                // レイキャスター
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+
+                // リサイズ対応
+                window.addEventListener('resize', () => this.onResize());
+            }
+
+            createGrid() {
+                this.cells = [];
+                this.cellMeshes = [];
+
                 const offset = (this.gridSize - 1) * this.cellSpacing / 2;
 
                 for (let w = 0; w < this.gridSize; w++) {
                     for (let z = 0; z < this.gridSize; z++) {
                         for (let y = 0; y < this.gridSize; y++) {
                             for (let x = 0; x < this.gridSize; x++) {
-                                cells.push({
+                                const cell = {
                                     pos4d: [
                                         x * this.cellSpacing - offset,
                                         y * this.cellSpacing - offset,
@@ -226,54 +290,105 @@
                                         w * this.cellSpacing - offset
                                     ],
                                     coords: { x, y, z, w },
-                                    value: null
-                                });
+                                    group: new THREE.Group()
+                                };
+
+                                // グリッドセルを作成
+                                this.createCellMesh(cell);
+                                this.scene.add(cell.group);
+                                this.cells.push(cell);
                             }
                         }
                     }
                 }
-                return cells;
+            }
+
+            createCellMesh(cell) {
+                const size = 0.4;
+
+                // ワイヤーフレームの立方体
+                const geometry = new THREE.BoxGeometry(size, size, size);
+                const edges = new THREE.EdgesGeometry(geometry);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const wireframe = new THREE.LineSegments(edges, material);
+                cell.group.add(wireframe);
+                cell.wireframe = wireframe;
+
+                // 選択用の透明メッシュ
+                const selectionMaterial = new THREE.MeshBasicMaterial({
+                    transparent: true,
+                    opacity: 0,
+                });
+                const selectionMesh = new THREE.Mesh(geometry, selectionMaterial);
+                selectionMesh.userData = { cell };
+                cell.group.add(selectionMesh);
+                cell.selectionMesh = selectionMesh;
+
+                this.cellMeshes.push(selectionMesh);
+            }
+
+            createMarker(cell, player) {
+                // X または O のマーカーを作成
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = player === 'X' ? '#ff00ff' : '#00ffff';
+                ctx.font = 'bold 100px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(player, 64, 64);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true
+                });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(0.6, 0.6, 1);
+
+                cell.group.add(sprite);
+                cell.marker = sprite;
+
+                // ワイヤーフレームの色を変更
+                cell.wireframe.material.color.setHex(player === 'X' ? 0xff00ff : 0x00ffff);
+                cell.wireframe.material.opacity = 0.6;
             }
 
             rotate4D(point, rotations) {
                 let [x, y, z, w] = point;
 
-                // XY回転
+                // 各回転平面
                 if (rotations.xy) {
                     const cos = Math.cos(rotations.xy);
                     const sin = Math.sin(rotations.xy);
                     [x, y] = [x * cos - y * sin, x * sin + y * cos];
                 }
-
-                // XZ回転
                 if (rotations.xz) {
                     const cos = Math.cos(rotations.xz);
                     const sin = Math.sin(rotations.xz);
                     [x, z] = [x * cos - z * sin, x * sin + z * cos];
                 }
-
-                // XW回転（4次元！）
                 if (rotations.xw) {
                     const cos = Math.cos(rotations.xw);
                     const sin = Math.sin(rotations.xw);
                     [x, w] = [x * cos - w * sin, x * sin + w * cos];
                 }
-
-                // YZ回転
                 if (rotations.yz) {
                     const cos = Math.cos(rotations.yz);
                     const sin = Math.sin(rotations.yz);
                     [y, z] = [y * cos - z * sin, y * sin + z * cos];
                 }
-
-                // YW回転（4次元！）
                 if (rotations.yw) {
                     const cos = Math.cos(rotations.yw);
                     const sin = Math.sin(rotations.yw);
                     [y, w] = [y * cos - w * sin, y * sin + w * cos];
                 }
-
-                // ZW回転（4次元！）
                 if (rotations.zw) {
                     const cos = Math.cos(rotations.zw);
                     const sin = Math.sin(rotations.zw);
@@ -284,118 +399,118 @@
             }
 
             project4Dto3D(point) {
-                const distance = 2.5;
+                const distance = 3;
                 const [x, y, z, w] = point;
                 const factor = distance / (distance - w);
                 return [x * factor, y * factor, z * factor, w];
             }
 
-            project3Dto2D(point) {
-                const distance = 4;
-                const [x, y, z] = point;
-                const factor = distance / (distance - z);
-                const scale = 200;
-                const screenX = x * factor * scale + this.width / 2;
-                const screenY = -y * factor * scale + this.height / 2;
-                return [screenX, screenY, z, factor];
-            }
+            updateCellPositions() {
+                this.cells.forEach(cell => {
+                    const rotated = this.rotate4D(cell.pos4d, this.rotations);
+                    const [x, y, z, w] = this.project4Dto3D(rotated);
 
-            drawCell(cell, rotatedPos, projectedPos, isHovered) {
-                const ctx = this.ctx;
-                const [screenX, screenY, depth, perspective] = projectedPos;
-                const [x3d, y3d, z3d, w] = rotatedPos;
+                    cell.group.position.set(x, y, z);
 
-                // 深度とW座標に基づいて色を決定
-                const depthFactor = (depth + 3) / 6;
-                const wFactor = (w + 2) / 4;
+                    // W座標に基づいて色相を変化
+                    const wFactor = (w + 2) / 4;
+                    const hue = (wFactor * 0.33 + 0.5) % 1; // 0.5-0.83 (青-紫)
 
-                // 4次元の位置に基づいて色相を変化
-                const hue = (wFactor * 120 + 240) % 360;
-                const opacity = 0.3 + depthFactor * 0.6;
-
-                // セルのサイズ（透視効果を適用）
-                const size = this.cellSize * 200 * perspective;
-
-                // セルの値に応じて描画
-                const value = this.board[cell.coords.w][cell.coords.z][cell.coords.y][cell.coords.x];
-
-                // ホバー効果
-                if (isHovered && !this.gameOver) {
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = `hsla(${hue}, 100%, 70%, 0.8)`;
-                }
-
-                // セルの背景
-                ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${opacity * 0.3})`;
-                ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${opacity})`;
-                ctx.lineWidth = isHovered ? 3 : 1.5;
-
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.shadowBlur = 0;
-
-                // X または O を描画
-                if (value) {
-                    ctx.font = `bold ${size * 1.5}px Arial`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-
-                    if (value === 'X') {
-                        ctx.fillStyle = `rgba(255, 100, 255, ${opacity})`;
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = 'rgba(255, 100, 255, 0.9)';
-                    } else {
-                        ctx.fillStyle = `rgba(100, 255, 255, ${opacity})`;
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = 'rgba(100, 255, 255, 0.9)';
+                    const value = this.board[cell.coords.w][cell.coords.z][cell.coords.y][cell.coords.x];
+                    if (!value) {
+                        cell.wireframe.material.color.setHSL(hue, 1, 0.5);
+                        cell.wireframe.material.opacity = 0.2 + wFactor * 0.3;
                     }
 
-                    ctx.fillText(value, screenX, screenY);
-                    ctx.shadowBlur = 0;
-                }
-
-                // デバッグ用：セルのインデックスを表示（小さく）
-                if (isHovered) {
-                    ctx.font = '10px monospace';
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                    const coords = `(${cell.coords.x},${cell.coords.y},${cell.coords.z},${cell.coords.w})`;
-                    ctx.fillText(coords, screenX, screenY + size + 12);
-                }
+                    // スケール調整（遠近感）
+                    const scale = 0.7 + wFactor * 0.6;
+                    cell.group.scale.setScalar(scale);
+                });
             }
 
-            handleMouseMove(e) {
-                const rect = this.canvas.getBoundingClientRect();
-                this.mousePos.x = e.clientX - rect.left;
-                this.mousePos.y = e.clientY - rect.top;
+            setupControls() {
+                const canvas = this.renderer.domElement;
+
+                // 回転軸トグル
+                document.querySelectorAll('.rotation-toggle').forEach(toggle => {
+                    toggle.addEventListener('click', () => {
+                        document.querySelectorAll('.rotation-toggle').forEach(t =>
+                            t.classList.remove('active'));
+                        toggle.classList.add('active');
+                        this.currentRotationAxis = toggle.dataset.axis;
+                    });
+                });
+
+                // リセットボタン
+                document.getElementById('reset-btn').addEventListener('click', () => this.reset());
+
+                // 自動回転ボタン
+                document.getElementById('auto-rotate-btn').addEventListener('click', () => {
+                    this.autoRotate = !this.autoRotate;
+                    document.getElementById('auto-rotate-btn').textContent =
+                        this.autoRotate ? '⏸ 自動回転' : '▶ 自動回転';
+                });
+
+                // マウス/タッチイベント
+                canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+                canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
+                canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
+                canvas.addEventListener('click', (e) => this.onClick(e));
             }
 
-            handleClick(e) {
-                if (this.gameOver || !this.hoveredCell) return;
+            onPointerDown(e) {
+                this.isDragging = true;
+                this.previousTouch = { x: e.clientX, y: e.clientY };
+            }
 
-                const cell = this.hoveredCell;
-                const { x, y, z, w } = cell.coords;
+            onPointerMove(e) {
+                if (!this.isDragging) return;
 
-                // セルが空なら配置
-                if (!this.board[w][z][y][x]) {
-                    this.board[w][z][y][x] = this.currentPlayer;
+                const deltaX = e.clientX - this.previousTouch.x;
+                const deltaY = e.clientY - this.previousTouch.y;
 
-                    // 勝利判定
-                    if (this.checkWin(w, z, y, x)) {
-                        this.gameOver = true;
-                        this.winner = this.currentPlayer;
-                        document.getElementById('status').textContent =
-                            `🎉 プレイヤー ${this.currentPlayer} の勝利！`;
-                    } else if (this.isBoardFull()) {
-                        this.gameOver = true;
-                        document.getElementById('status').textContent = '引き分け！';
-                    } else {
-                        // プレイヤー交代
-                        this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
-                        document.getElementById('status').textContent =
-                            `プレイヤー ${this.currentPlayer} の番です`;
+                const sensitivity = 0.01;
+                const delta = (deltaX + deltaY) * sensitivity;
+
+                this.rotations[this.currentRotationAxis] += delta;
+
+                this.previousTouch = { x: e.clientX, y: e.clientY };
+            }
+
+            onPointerUp(e) {
+                this.isDragging = false;
+            }
+
+            onClick(e) {
+                if (this.gameOver) return;
+
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.cellMeshes);
+
+                if (intersects.length > 0) {
+                    const cell = intersects[0].object.userData.cell;
+                    const { x, y, z, w } = cell.coords;
+
+                    if (!this.board[w][z][y][x]) {
+                        this.board[w][z][y][x] = this.currentPlayer;
+                        this.createMarker(cell, this.currentPlayer);
+
+                        if (this.checkWin(w, z, y, x)) {
+                            this.gameOver = true;
+                            document.getElementById('status').textContent =
+                                `🎉 プレイヤー ${this.currentPlayer} の勝利！`;
+                        } else if (this.isBoardFull()) {
+                            this.gameOver = true;
+                            document.getElementById('status').textContent = '引き分け！';
+                        } else {
+                            this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+                            document.getElementById('status').textContent =
+                                `プレイヤー ${this.currentPlayer} の番です`;
+                        }
                     }
                 }
             }
@@ -403,9 +518,8 @@
             checkWin(w, z, y, x) {
                 const player = this.currentPlayer;
                 const size = this.gridSize;
-
-                // 全ての方向ベクトルを生成
                 const directions = [];
+
                 for (let dw = -1; dw <= 1; dw++) {
                     for (let dz = -1; dz <= 1; dz++) {
                         for (let dy = -1; dy <= 1; dy++) {
@@ -417,42 +531,25 @@
                     }
                 }
 
-                // 各方向で4つ並んでいるかチェック
                 for (const [dw, dz, dy, dx] of directions) {
                     let count = 1;
 
-                    // 正方向
                     for (let i = 1; i < size; i++) {
-                        const nw = w + dw * i;
-                        const nz = z + dz * i;
-                        const ny = y + dy * i;
-                        const nx = x + dx * i;
-
+                        const nw = w + dw * i, nz = z + dz * i;
+                        const ny = y + dy * i, nx = x + dx * i;
                         if (nw < 0 || nw >= size || nz < 0 || nz >= size ||
                             ny < 0 || ny >= size || nx < 0 || nx >= size) break;
-
-                        if (this.board[nw][nz][ny][nx] === player) {
-                            count++;
-                        } else {
-                            break;
-                        }
+                        if (this.board[nw][nz][ny][nx] === player) count++;
+                        else break;
                     }
 
-                    // 負方向
                     for (let i = 1; i < size; i++) {
-                        const nw = w - dw * i;
-                        const nz = z - dz * i;
-                        const ny = y - dy * i;
-                        const nx = x - dx * i;
-
+                        const nw = w - dw * i, nz = z - dz * i;
+                        const ny = y - dy * i, nx = x - dx * i;
                         if (nw < 0 || nw >= size || nz < 0 || nz >= size ||
                             ny < 0 || ny >= size || nx < 0 || nx >= size) break;
-
-                        if (this.board[nw][nz][ny][nx] === player) {
-                            count++;
-                        } else {
-                            break;
-                        }
+                        if (this.board[nw][nz][ny][nx] === player) count++;
+                        else break;
                     }
 
                     if (count >= size) return true;
@@ -462,15 +559,11 @@
             }
 
             isBoardFull() {
-                for (let w = 0; w < this.gridSize; w++) {
-                    for (let z = 0; z < this.gridSize; z++) {
-                        for (let y = 0; y < this.gridSize; y++) {
-                            for (let x = 0; x < this.gridSize; x++) {
+                for (let w = 0; w < this.gridSize; w++)
+                    for (let z = 0; z < this.gridSize; z++)
+                        for (let y = 0; y < this.gridSize; y++)
+                            for (let x = 0; x < this.gridSize; x++)
                                 if (!this.board[w][z][y][x]) return false;
-                            }
-                        }
-                    }
-                }
                 return true;
             }
 
@@ -478,117 +571,39 @@
                 this.board = this.createEmptyBoard();
                 this.currentPlayer = 'X';
                 this.gameOver = false;
-                this.winner = null;
                 document.getElementById('status').textContent = 'プレイヤー X の番です';
+
+                this.cells.forEach(cell => {
+                    if (cell.marker) {
+                        cell.group.remove(cell.marker);
+                        cell.marker = null;
+                    }
+                    cell.wireframe.material.color.setHex(0x00ffff);
+                    cell.wireframe.material.opacity = 0.3;
+                });
             }
 
-            toggleAutoRotate() {
-                this.autoRotate = !this.autoRotate;
-                document.getElementById('rotate-status').textContent =
-                    this.autoRotate ? '⏸ 自動回転停止' : '▶ 自動回転開始';
-            }
-
-            changeRotationSpeed(delta) {
-                this.rotationSpeed = Math.max(0.1, Math.min(5, this.rotationSpeed + delta * 0.5));
-            }
-
-            manualRotate(plane) {
-                this.rotations[plane] += 0.15;
+            onResize() {
+                const container = document.getElementById('canvas-container');
+                this.camera.aspect = container.clientWidth / container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
             }
 
             animate() {
-                // 背景をクリア（トレイルエフェクト）
-                this.ctx.fillStyle = 'rgba(10, 10, 26, 0.2)';
-                this.ctx.fillRect(0, 0, this.width, this.height);
+                requestAnimationFrame(() => this.animate());
 
-                // 自動回転
                 if (this.autoRotate) {
-                    this.rotations.xw += this.baseSpeed * this.rotationSpeed;
-                    this.rotations.yz += this.baseSpeed * this.rotationSpeed * 0.7;
-                    this.rotations.zw += this.baseSpeed * this.rotationSpeed * 0.5;
+                    this.rotations.xw += this.rotationSpeed;
+                    this.rotations.yz += this.rotationSpeed * 0.7;
                 }
 
-                // 全セルを回転・投影・ソート
-                const projectedCells = this.cells.map(cell => {
-                    // ボード状態を更新
-                    cell.value = this.board[cell.coords.w][cell.coords.z][cell.coords.y][cell.coords.x];
-
-                    const rotated = this.rotate4D(cell.pos4d, this.rotations);
-                    const projected3d = this.project4Dto3D(rotated);
-                    const projected2d = this.project3Dto2D(projected3d);
-
-                    return {
-                        cell,
-                        rotated,
-                        projected: projected2d,
-                        depth: projected2d[2] // Z座標でソート
-                    };
-                });
-
-                // 深度ソート（奥から手前）
-                projectedCells.sort((a, b) => a.depth - b.depth);
-
-                // ホバー検出
-                this.hoveredCell = null;
-                let minDist = 20; // ホバー検出の最小距離
-
-                // 全セルを描画
-                projectedCells.forEach(({ cell, rotated, projected, depth }) => {
-                    const [screenX, screenY] = projected;
-                    const dist = Math.hypot(this.mousePos.x - screenX, this.mousePos.y - screenY);
-
-                    if (dist < minDist && !cell.value) {
-                        minDist = dist;
-                        this.hoveredCell = cell;
-                    }
-
-                    const isHovered = (this.hoveredCell === cell);
-                    this.drawCell(cell, rotated, projected, isHovered);
-                });
-
-                // 接続線を描画（オプション：テッセラクトのエッジ）
-                this.drawConnections(projectedCells);
-
-                requestAnimationFrame(() => this.animate());
-            }
-
-            drawConnections(projectedCells) {
-                const ctx = this.ctx;
-
-                // 隣接セルを接続（グリッド構造を可視化）
-                projectedCells.forEach(({ cell, projected }) => {
-                    const [x1, y1, depth] = projected;
-                    const { x, y, z, w } = cell.coords;
-
-                    // X軸方向の接続
-                    if (x < this.gridSize - 1) {
-                        const neighborIndex = this.getCellIndex(x + 1, y, z, w);
-                        const neighbor = projectedCells[neighborIndex];
-                        if (neighbor) {
-                            const [x2, y2, depth2] = neighbor.projected;
-                            const avgDepth = (depth + depth2) / 2;
-                            const opacity = 0.05 + (avgDepth + 3) / 30;
-
-                            ctx.strokeStyle = `rgba(100, 200, 255, ${opacity})`;
-                            ctx.lineWidth = 0.5;
-                            ctx.beginPath();
-                            ctx.moveTo(x1, y1);
-                            ctx.lineTo(x2, y2);
-                            ctx.stroke();
-                        }
-                    }
-                });
-            }
-
-            getCellIndex(x, y, z, w) {
-                return w * this.gridSize * this.gridSize * this.gridSize +
-                       z * this.gridSize * this.gridSize +
-                       y * this.gridSize +
-                       x;
+                this.updateCellPositions();
+                this.renderer.render(this.scene, this.camera);
             }
         }
 
-        // ゲーム初期化
+        // ゲーム開始
         const game = new Tesseract4DGame();
     </script>
 </body>
