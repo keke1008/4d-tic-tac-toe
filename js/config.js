@@ -2,7 +2,7 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
-export const VERSION = '1.6.0';
+export const VERSION = '1.7.0';
 
 export const CONFIG = {
     // Game settings
@@ -22,29 +22,26 @@ export const CONFIG = {
     CAMERA_DISTANCE_MIN: 8,
     CAMERA_DISTANCE_MAX: 20,
 
-    // Visual settings - Darker unselected, bright when selected
-    CELL_OPACITY_MIN: 0.15,        // Darker for unselected cells
-    CELL_OPACITY_RANGE: 0.15,      // Smaller range
+    // Visual settings - Unified colors for unselected, player colors for selected
     CELL_SCALE_MIN: 0.7,
     CELL_SCALE_RANGE: 0.6,
     CELL_LINE_WIDTH: 2,           // Thicker cell wireframes
-
-    CONNECTION_OPACITY_MIN: 0.08,  // Much darker for unselected
-    CONNECTION_OPACITY_RANGE: 0.1, // Smaller range
     CONNECTION_LINE_WIDTH: 1.5,    // Thicker connection lines
 
-    // Color settings (HSL) - Darker for unselected
-    HUE_OFFSET: 0.15,              // red-orange
-    HUE_RANGE: 0.6,                // wider spectrum
-    SATURATION: 0.6,               // Lower saturation for unselected
-    LIGHTNESS: 0.3,                // Darker for unselected
+    // Unselected cell appearance - Unified color for all
+    UNSELECTED_CELL_COLOR: 0x4a4a6a,  // Neutral gray-blue
+    UNSELECTED_CELL_OPACITY: 0.25,     // Visible but subtle
 
-    // Selected cell/connection colors - Bright and vibrant
-    SELECTED_CELL_SATURATION: 1.0,
-    SELECTED_CELL_LIGHTNESS: 0.65,
-    SELECTED_CONNECTION_SATURATION: 1.0,
-    SELECTED_CONNECTION_LIGHTNESS: 0.55,
-    SELECTED_CONNECTION_OPACITY: 0.6,
+    // Unselected grid appearance - Unified color for all
+    UNSELECTED_GRID_COLOR: 0x5a5a7a,   // Slightly brighter gray-blue
+    UNSELECTED_GRID_OPACITY: 0.3,      // Visible and recognizable
+
+    // Selected cell appearance - Uses player colors
+    SELECTED_CELL_OPACITY: 0.9,        // Bright and prominent
+
+    // Selected grid appearance - Based on connection endpoints
+    SELECTED_GRID_OPACITY: 0.5,        // Player color, moderate brightness
+    SAME_PLAYER_GRID_OPACITY: 0.8,     // Strong color when both ends same player
 
     // Marker settings - Larger and more visible
     MARKER_SCALE: 0.8,             // Increased from 0.6

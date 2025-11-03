@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from '../config.js';
-import { rotate4D, project4Dto3D, getHueFromW } from '../math4d.js';
+import { rotate4D, project4Dto3D } from '../math4d.js';
 
 export class ConnectionManager {
     /**
@@ -56,32 +56,30 @@ export class ConnectionManager {
     /**
      * Update all connection lines based on current rotation
      * @param {Object} rotations - Rotation angles {xy, xz, xw, yz, yw, zw}
-     * @param {Array} cells - Array of cell objects (optional, for highlighting selected)
+     * @param {Array} cells - Array of cell objects (for determining line colors)
      */
     updateLines(rotations, cells = []) {
-        // Build set of selected cell positions for fast lookup
-        const selectedPositions = new Set();
+        // Build map of cell positions to cell objects for fast lookup
+        const cellMap = new Map();
         cells.forEach(cell => {
-            if (cell.isSelected) {
-                // Create key from 4D position
-                const key = cell.pos4d.join(',');
-                selectedPositions.add(key);
-            }
+            const key = cell.pos4d.join(',');
+            cellMap.set(key, cell);
         });
 
         this.connectionLines.forEach(line => {
             const { pos4d1, pos4d2 } = line.userData;
 
-            // Check if either endpoint is a selected cell
+            // Get cells at both endpoints
             const key1 = pos4d1.join(',');
             const key2 = pos4d2.join(',');
-            const isSelected = selectedPositions.has(key1) || selectedPositions.has(key2);
+            const cell1 = cellMap.get(key1);
+            const cell2 = cellMap.get(key2);
 
             // Rotate and project endpoints
             const rotated1 = rotate4D(pos4d1, rotations);
             const rotated2 = rotate4D(pos4d2, rotations);
-            const [x1, y1, z1, w1] = project4Dto3D(rotated1);
-            const [x2, y2, z2, w2] = project4Dto3D(rotated2);
+            const [x1, y1, z1] = project4Dto3D(rotated1);
+            const [x2, y2, z2] = project4Dto3D(rotated2);
 
             // Update line geometry
             const positions = line.geometry.attributes.position.array;
@@ -93,28 +91,34 @@ export class ConnectionManager {
             positions[5] = z2;
             line.geometry.attributes.position.needsUpdate = true;
 
-            // Update color based on average W coordinate
-            const avgW = (w1 + w2) / 2;
-            const hue = getHueFromW(avgW);
-            const wFactor = (avgW + 2) / 4;
+            // Determine line color based on endpoint selection states
+            const selected1 = cell1?.isSelected || false;
+            const selected2 = cell2?.isSelected || false;
+            const player1 = cell1?.player;
+            const player2 = cell2?.player;
 
-            if (isSelected) {
-                // Bright and vibrant for selected connections
-                line.material.color.setHSL(
-                    hue,
-                    CONFIG.SELECTED_CONNECTION_SATURATION,
-                    CONFIG.SELECTED_CONNECTION_LIGHTNESS
-                );
-                line.material.opacity = CONFIG.SELECTED_CONNECTION_OPACITY;
+            if (!selected1 && !selected2) {
+                // Both unselected: unified grid color
+                line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
+                line.material.opacity = CONFIG.UNSELECTED_GRID_OPACITY;
+            } else if (selected1 && selected2) {
+                // Both selected
+                if (player1 === player2) {
+                    // Same player: strong color
+                    const color = player1 === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+                    line.material.color.setHex(color);
+                    line.material.opacity = CONFIG.SAME_PLAYER_GRID_OPACITY;
+                } else {
+                    // Different players: unselected color
+                    line.material.color.setHex(CONFIG.UNSELECTED_GRID_COLOR);
+                    line.material.opacity = CONFIG.UNSELECTED_GRID_OPACITY;
+                }
             } else {
-                // Darker for unselected connections
-                const opacity = CONFIG.CONNECTION_OPACITY_MIN + wFactor * CONFIG.CONNECTION_OPACITY_RANGE;
-                line.material.color.setHSL(
-                    hue,
-                    CONFIG.SATURATION * 0.8,
-                    CONFIG.LIGHTNESS * 0.7
-                );
-                line.material.opacity = opacity;
+                // One selected: use that player's color
+                const player = selected1 ? player1 : player2;
+                const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+                line.material.color.setHex(color);
+                line.material.opacity = CONFIG.SELECTED_GRID_OPACITY;
             }
         });
     }

@@ -46,6 +46,7 @@ export class MarkerRenderer {
         cell.group.add(sprite);
         cell.marker = sprite;
         cell.isSelected = true; // Mark cell as selected
+        cell.player = player;    // Track which player selected this cell
 
         // Update cell wireframe appearance
         this.updateCellAppearance(cell, player);
@@ -76,11 +77,12 @@ export class MarkerRenderer {
             cell.marker.material.dispose();
             cell.marker = null;
             cell.isSelected = false; // Mark cell as unselected
+            cell.player = null;      // Clear player tracking
         }
 
-        // Reset wireframe appearance
-        cell.wireframe.material.color.setHex(0x00ffff);
-        cell.wireframe.material.opacity = 0.3;
+        // Reset wireframe appearance to unselected color
+        cell.wireframe.material.color.setHex(CONFIG.UNSELECTED_CELL_COLOR);
+        cell.wireframe.material.opacity = CONFIG.UNSELECTED_CELL_OPACITY;
     }
 
     /**
