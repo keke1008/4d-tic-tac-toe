@@ -3,6 +3,7 @@
  */
 
 import { CONFIG } from './config.js';
+import { WinChecker } from './game/WinChecker.js';
 
 export class GameBoard {
     constructor() {
@@ -11,6 +12,9 @@ export class GameBoard {
         this.currentPlayer = 'X';
         this.gameOver = false;
         this.winner = null;
+
+        // Initialize win checker
+        this.winChecker = new WinChecker(this.gridSize);
     }
 
     /**
@@ -49,6 +53,7 @@ export class GameBoard {
 
     /**
      * Check if the current player has won
+     * Delegates to WinChecker
      * @param {number} x
      * @param {number} y
      * @param {number} z
@@ -56,82 +61,9 @@ export class GameBoard {
      * @returns {boolean} True if current player won
      */
     checkWin(x, y, z, w) {
-        const player = this.currentPlayer;
-        const size = this.gridSize;
-        const directions = this.generateDirections();
-
-        for (const [dx, dy, dz, dw] of directions) {
-            let count = 1;
-
-            // Check positive direction
-            for (let i = 1; i < size; i++) {
-                const nx = x + dx * i;
-                const ny = y + dy * i;
-                const nz = z + dz * i;
-                const nw = w + dw * i;
-
-                if (!this.isValidCoordinate(nx, ny, nz, nw)) break;
-                if (this.board[nw][nz][ny][nx] === player) {
-                    count++;
-                } else {
-                    break;
-                }
-            }
-
-            // Check negative direction
-            for (let i = 1; i < size; i++) {
-                const nx = x - dx * i;
-                const ny = y - dy * i;
-                const nz = z - dz * i;
-                const nw = w - dw * i;
-
-                if (!this.isValidCoordinate(nx, ny, nz, nw)) break;
-                if (this.board[nw][nz][ny][nx] === player) {
-                    count++;
-                } else {
-                    break;
-                }
-            }
-
-            if (count >= size) return true;
-        }
-
-        return false;
+        return this.winChecker.checkWin(x, y, z, w, this.currentPlayer, this.board);
     }
 
-    /**
-     * Generate all possible directions in 4D space
-     * @returns {Array} Array of direction vectors [dx, dy, dz, dw]
-     */
-    generateDirections() {
-        const directions = [];
-        for (let dw = -1; dw <= 1; dw++) {
-            for (let dz = -1; dz <= 1; dz++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        if (dw === 0 && dz === 0 && dy === 0 && dx === 0) continue;
-                        directions.push([dx, dy, dz, dw]);
-                    }
-                }
-            }
-        }
-        return directions;
-    }
-
-    /**
-     * Check if coordinates are valid
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} w
-     * @returns {boolean}
-     */
-    isValidCoordinate(x, y, z, w) {
-        return x >= 0 && x < this.gridSize &&
-               y >= 0 && y < this.gridSize &&
-               z >= 0 && z < this.gridSize &&
-               w >= 0 && w < this.gridSize;
-    }
 
     /**
      * Check if the board is full
