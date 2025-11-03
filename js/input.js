@@ -1,24 +1,21 @@
 /**
- * Input handling for touch/mouse controls using Hammer.js
+ * Input handling coordinator
+ * Delegates to specialized controllers and coordinates events
  */
 
-import { CONFIG } from './config.js';
 import { GestureHandler } from './input/GestureHandler.js';
 import { MouseController } from './input/MouseController.js';
+import { UIController } from './input/UIController.js';
 
 export class InputController extends EventTarget {
     constructor(canvas) {
         super();
         this.canvas = canvas;
 
-        // Rotation axis selection
-        this.horizontalRotationAxis = CONFIG.DEFAULT_HORIZONTAL_AXIS;
-        this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
-
+        // Setup UI controller first as it manages rotation axes
+        this.setupUIController();
         this.setupGestureHandler();
         this.setupMouseController();
-        this.setupRotationToggles();
-        this.setupActionButtons();
     }
 
     /**
@@ -34,20 +31,22 @@ export class InputController extends EventTarget {
             }));
         });
 
-        // Forward rotation events with axis information
+        // Forward rotation events with axis information from UIController
         this.gestureHandler.addEventListener('rotateHorizontal', (e) => {
+            const axes = this.uiController.getRotationAxes();
             this.dispatchEvent(new CustomEvent('rotate', {
                 detail: {
-                    axis: this.horizontalRotationAxis,
+                    axis: axes.horizontal,
                     delta: e.detail.delta
                 }
             }));
         });
 
         this.gestureHandler.addEventListener('rotateVertical', (e) => {
+            const axes = this.uiController.getRotationAxes();
             this.dispatchEvent(new CustomEvent('rotate', {
                 detail: {
-                    axis: this.verticalRotationAxis,
+                    axis: axes.vertical,
                     delta: e.detail.delta
                 }
             }));
@@ -89,74 +88,22 @@ export class InputController extends EventTarget {
     }
 
     /**
-     * Setup rotation axis toggle buttons
+     * Setup UI controller and listen to its events
      */
-    setupRotationToggles() {
-        // Horizontal swipe rotation axis
-        document.querySelectorAll('#horizontal-rotation .rotation-toggle').forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                document.querySelectorAll('#horizontal-rotation .rotation-toggle').forEach(t =>
-                    t.classList.remove('active'));
-                toggle.classList.add('active');
-                this.horizontalRotationAxis = toggle.dataset.axis;
-            });
+    setupUIController() {
+        this.uiController = new UIController();
+
+        // Forward reset and auto-rotate events
+        this.uiController.addEventListener('reset', () => {
+            this.dispatchEvent(new CustomEvent('reset'));
         });
 
-        // Vertical swipe rotation axis
-        document.querySelectorAll('#vertical-rotation .rotation-toggle').forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                document.querySelectorAll('#vertical-rotation .rotation-toggle').forEach(t =>
-                    t.classList.remove('active'));
-                toggle.classList.add('active');
-                this.verticalRotationAxis = toggle.dataset.axis;
-            });
+        this.uiController.addEventListener('toggleAutoRotate', () => {
+            this.dispatchEvent(new CustomEvent('toggleAutoRotate'));
         });
-    }
 
-    /**
-     * Setup action buttons (reset, auto-rotate, settings, help)
-     */
-    setupActionButtons() {
-        const resetBtn = document.getElementById('reset-btn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('reset'));
-            });
-        }
-
-        const autoRotateBtn = document.getElementById('auto-rotate-btn');
-        if (autoRotateBtn) {
-            autoRotateBtn.addEventListener('click', () => {
-                this.dispatchEvent(new CustomEvent('toggleAutoRotate'));
-            });
-        }
-
-        // Settings toggle button
-        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
-        const advancedControls = document.getElementById('advanced-controls');
-        if (settingsToggleBtn && advancedControls) {
-            settingsToggleBtn.addEventListener('click', () => {
-                advancedControls.classList.toggle('collapsed');
-                // Close help when opening settings
-                if (!advancedControls.classList.contains('collapsed')) {
-                    const helpText = document.getElementById('help-text');
-                    if (helpText) helpText.classList.add('collapsed');
-                }
-            });
-        }
-
-        // Help toggle button
-        const helpBtn = document.getElementById('help-btn');
-        const helpText = document.getElementById('help-text');
-        if (helpBtn && helpText) {
-            helpBtn.addEventListener('click', () => {
-                helpText.classList.toggle('collapsed');
-                // Close settings when opening help
-                if (!helpText.classList.contains('collapsed')) {
-                    if (advancedControls) advancedControls.classList.add('collapsed');
-                }
-            });
-        }
+        // Axis changes are handled internally by UIController
+        // Gesture handler will query current axes when needed
     }
 
     /**
@@ -164,11 +111,7 @@ export class InputController extends EventTarget {
      * @param {boolean} autoRotate
      */
     updateAutoRotateButton(autoRotate) {
-        const btn = document.getElementById('auto-rotate-btn');
-        if (btn) {
-            btn.textContent = autoRotate ? '⏸' : '▶';
-            btn.title = autoRotate ? '自動回転を停止' : '自動回転を開始';
-        }
+        this.uiController.updateAutoRotateButton(autoRotate);
     }
 
     /**
@@ -180,6 +123,9 @@ export class InputController extends EventTarget {
         }
         if (this.mouseController) {
             this.mouseController.destroy();
+        }
+        if (this.uiController) {
+            this.uiController.destroy();
         }
     }
 }
