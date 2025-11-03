@@ -15,43 +15,21 @@ export class MarkerRenderer {
 
     /**
      * Create a marker (X or O) on a cell
+     * Now only changes cell color, no sprite displayed
      * @param {Object} cell - Cell object with group property
      * @param {string} player - 'X' or 'O'
-     * @returns {THREE.Sprite} Created marker sprite
+     * @returns {null} No sprite created
      */
     createMarker(cell, player) {
-        // Create canvas texture for marker
-        const canvas = document.createElement('canvas');
-        canvas.width = CONFIG.MARKER_CANVAS_SIZE;
-        canvas.height = CONFIG.MARKER_CANVAS_SIZE;
-        const ctx = canvas.getContext('2d');
-
-        // Draw player symbol
-        ctx.fillStyle = player === 'X' ? '#ff00ff' : '#00ffff';
-        ctx.font = 'bold 100px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(player, 64, 64);
-
-        // Create sprite with texture
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true
-        });
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(CONFIG.MARKER_SCALE, CONFIG.MARKER_SCALE, 1);
-
-        // Add to cell
-        cell.group.add(sprite);
-        cell.marker = sprite;
+        // Mark cell as selected (no sprite, just color change)
+        cell.marker = true; // Set to true instead of sprite object
         cell.isSelected = true; // Mark cell as selected
         cell.player = player;    // Track which player selected this cell
 
-        // Update cell wireframe appearance
+        // Update cell wireframe appearance (color only)
         this.updateCellAppearance(cell, player);
 
-        return sprite;
+        return null;
     }
 
     /**
@@ -72,9 +50,7 @@ export class MarkerRenderer {
      */
     clearMarkerFromCell(cell) {
         if (cell.marker) {
-            cell.group.remove(cell.marker);
-            cell.marker.material.map.dispose();
-            cell.marker.material.dispose();
+            // No sprite to remove, just clear flags
             cell.marker = null;
             cell.isSelected = false; // Mark cell as unselected
             cell.player = null;      // Clear player tracking
@@ -100,7 +76,7 @@ export class MarkerRenderer {
      * @returns {boolean} True if cell has a marker
      */
     hasMarker(cell) {
-        return cell.marker !== null;
+        return cell.marker !== null && cell.marker !== false;
     }
 
     /**
@@ -109,12 +85,7 @@ export class MarkerRenderer {
      * @returns {string|null} 'X', 'O', or null if no marker
      */
     getMarkerPlayer(cell) {
-        if (!cell.marker) return null;
-
-        // Determine player from color
-        const color = cell.wireframe.material.color.getHex();
-        if (color === CONFIG.PLAYER_X_COLOR) return 'X';
-        if (color === CONFIG.PLAYER_O_COLOR) return 'O';
-        return null;
+        // Return player directly from cell (no sprite to check)
+        return cell.player || null;
     }
 }
