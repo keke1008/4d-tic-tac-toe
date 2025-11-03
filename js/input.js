@@ -4,6 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { GestureHandler } from './input/GestureHandler.js';
+import { MouseController } from './input/MouseController.js';
 
 export class InputController extends EventTarget {
     constructor(canvas) {
@@ -14,12 +15,8 @@ export class InputController extends EventTarget {
         this.horizontalRotationAxis = CONFIG.DEFAULT_HORIZONTAL_AXIS;
         this.verticalRotationAxis = CONFIG.DEFAULT_VERTICAL_AXIS;
 
-        // Mouse state
-        this.isMouseDragging = false;
-        this.lastMousePos = { x: 0, y: 0 };
-
         this.setupGestureHandler();
-        this.setupMouseControls();
+        this.setupMouseController();
         this.setupRotationToggles();
         this.setupActionButtons();
     }
@@ -72,60 +69,22 @@ export class InputController extends EventTarget {
 
 
     /**
-     * Setup mouse controls for PC users
+     * Setup mouse controller and listen to its events
      */
-    setupMouseControls() {
-        // Mouse wheel for zoom
-        this.canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
+    setupMouseController() {
+        this.mouseController = new MouseController(this.canvas);
 
-            // Normalize wheel delta (different browsers have different scales)
-            const delta = -e.deltaY * 0.01;
-
-            this.dispatchEvent(new CustomEvent('cameraPinch', {
-                detail: { delta: delta }
+        // Forward camera events
+        this.mouseController.addEventListener('cameraPan', (e) => {
+            this.dispatchEvent(new CustomEvent('cameraPan', {
+                detail: e.detail
             }));
-        }, { passive: false });
-
-        // Mouse drag with Shift for camera pan
-        this.canvas.addEventListener('mousedown', (e) => {
-            if (e.shiftKey) {
-                this.isMouseDragging = true;
-                this.lastMousePos = { x: e.clientX, y: e.clientY };
-                this.canvas.style.cursor = 'grab';
-                e.preventDefault();
-            }
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (this.isMouseDragging && e.shiftKey) {
-                const deltaX = e.clientX - this.lastMousePos.x;
-                const deltaY = e.clientY - this.lastMousePos.y;
-                this.lastMousePos = { x: e.clientX, y: e.clientY };
-
-                this.dispatchEvent(new CustomEvent('cameraPan', {
-                    detail: {
-                        deltaX: -deltaX * 0.01,
-                        deltaY: deltaY * 0.01
-                    }
-                }));
-                this.canvas.style.cursor = 'grabbing';
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (this.isMouseDragging) {
-                this.isMouseDragging = false;
-                this.canvas.style.cursor = 'default';
-            }
-        });
-
-        // Stop dragging if Shift key is released
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'Shift' && this.isMouseDragging) {
-                this.isMouseDragging = false;
-                this.canvas.style.cursor = 'default';
-            }
+        this.mouseController.addEventListener('cameraPinch', (e) => {
+            this.dispatchEvent(new CustomEvent('cameraPinch', {
+                detail: e.detail
+            }));
         });
     }
 
@@ -218,6 +177,9 @@ export class InputController extends EventTarget {
     destroy() {
         if (this.gestureHandler) {
             this.gestureHandler.destroy();
+        }
+        if (this.mouseController) {
+            this.mouseController.destroy();
         }
     }
 }
