@@ -92,11 +92,20 @@ export class InputController extends EventTarget {
         });
 
         // Single-finger pan - for 4D rotation
-        this.hammer.on('singlepanstart', () => {
+        this.hammer.on('singlepanstart', (e) => {
+            // Don't start rotation if Shift key is pressed (used for camera pan)
+            if (e.srcEvent && e.srcEvent.shiftKey) {
+                return;
+            }
             this.swipeDirection = null;
         });
 
         this.hammer.on('singlepan', (e) => {
+            // Ignore rotation if Shift key is pressed (used for camera pan)
+            if (e.srcEvent && e.srcEvent.shiftKey) {
+                return;
+            }
+
             // Determine swipe direction on first significant movement
             if (!this.swipeDirection) {
                 const absDeltaX = Math.abs(e.deltaX);
