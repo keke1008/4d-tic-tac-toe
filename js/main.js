@@ -24,6 +24,7 @@ class Game {
         this.setupEventListeners();
         this.updateStatus();
         this.updateVersion();
+        this.inputController.updateAutoRotateButton(this.autoRotate); // Set initial button state
         this.animate();
     }
 
@@ -141,6 +142,12 @@ class Game {
 
         // Update player marker color
         markerElement.className = currentPlayer === 'X' ? 'player-x' : 'player-o';
+
+        // Update status border color to match current player
+        statusElement.classList.remove('player-x-turn', 'player-o-turn');
+        if (!isVictory && message !== '引き分け！') {
+            statusElement.classList.add(currentPlayer === 'X' ? 'player-x-turn' : 'player-o-turn');
+        }
 
         if (isVictory) {
             // Victory display
