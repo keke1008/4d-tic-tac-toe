@@ -58,25 +58,85 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(10px);
     border-top: 1px solid rgba(255, 0, 255, 0.3);
-    padding: 15px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     pointer-events: auto;
+}
+
+/* Compact button row */
+#compact-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.icon-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
+    border: 2px solid rgba(255, 0, 255, 0.5);
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.icon-btn:hover, .icon-btn:active {
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.5), rgba(0, 255, 255, 0.5));
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+    transform: scale(1.1);
+}
+
+/* Collapsible sections */
+#advanced-controls,
+#help-text {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    opacity: 1;
+}
+
+#advanced-controls.collapsed,
+#help-text.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+#help-text {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.75em;
+    line-height: 1.6;
+}
+
+.help-item {
+    display: inline-block;
+    margin-right: 12px;
+    margin-bottom: 4px;
 }
 
 .rotation-control-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .rotation-label {
-    font-size: 0.85em;
+    font-size: 0.75em;
     color: #aaa;
+    font-weight: 600;
 }
 
 .rotation-mode {
@@ -86,8 +146,8 @@ body {
 }
 
 .rotation-toggle {
-    padding: 6px 12px;
-    font-size: 0.85em;
+    padding: 4px 10px;
+    font-size: 0.75em;
     background: rgba(100, 100, 100, 0.3);
     border: 2px solid rgba(150, 150, 150, 0.5);
     border-radius: 6px;
@@ -109,13 +169,6 @@ body {
     margin-left: 3px;
 }
 
-#action-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
 button {
     padding: 8px 16px;
     font-size: 0.95em;
@@ -133,42 +186,39 @@ button:hover, button:active {
     transform: translateY(-2px);
 }
 
-#hint {
-    font-size: 0.8em;
-    color: #888;
-    text-align: center;
-    line-height: 1.3;
-}
-
 #version {
-    font-size: 0.7em;
+    font-size: 0.65em;
     color: #555;
     text-align: center;
-    margin-top: 5px;
 }
 
 /* Mobile responsive styles */
 @media (max-width: 600px) {
     #status {
-        font-size: 1em;
-        padding: 10px 15px;
+        font-size: 0.9em;
+        padding: 8px 12px;
+    }
+
+    .icon-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2em;
     }
 
     .rotation-label {
-        font-size: 0.75em;
+        font-size: 0.7em;
     }
 
     .rotation-toggle {
-        padding: 5px 10px;
-        font-size: 0.8em;
-    }
-
-    button {
-        padding: 7px 14px;
-        font-size: 0.85em;
-    }
-
-    #hint {
+        padding: 4px 8px;
         font-size: 0.7em;
+    }
+
+    #help-text {
+        font-size: 0.7em;
+    }
+
+    #controls {
+        padding: 6px;
     }
 }

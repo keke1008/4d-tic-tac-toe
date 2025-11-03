@@ -15,35 +15,50 @@
         </div>
 
         <div id="controls">
-            <div class="rotation-control-group">
-                <div class="rotation-label">↔ 水平スワイプ:</div>
-                <div class="rotation-mode" id="horizontal-rotation">
-                    <div class="rotation-toggle" data-axis="xy">XY</div>
-                    <div class="rotation-toggle" data-axis="xz">XZ</div>
-                    <div class="rotation-toggle dimension-4 active" data-axis="xw">XW</div>
-                    <div class="rotation-toggle" data-axis="yz">YZ</div>
-                    <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
-                    <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+            <!-- Compact action buttons (always visible) -->
+            <div id="compact-buttons">
+                <button id="reset-btn" class="icon-btn" title="リセット">🔄</button>
+                <button id="auto-rotate-btn" class="icon-btn" title="自動回転">▶</button>
+                <button id="settings-toggle-btn" class="icon-btn" title="設定">⚙️</button>
+                <button id="help-btn" class="icon-btn" title="ヘルプ">❓</button>
+            </div>
+
+            <!-- Collapsible advanced controls -->
+            <div id="advanced-controls" class="collapsed">
+                <div class="rotation-control-group">
+                    <div class="rotation-label">↔ 水平:</div>
+                    <div class="rotation-mode" id="horizontal-rotation">
+                        <div class="rotation-toggle" data-axis="xy">XY</div>
+                        <div class="rotation-toggle" data-axis="xz">XZ</div>
+                        <div class="rotation-toggle dimension-4 active" data-axis="xw">XW</div>
+                        <div class="rotation-toggle" data-axis="yz">YZ</div>
+                        <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
+                        <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+                    </div>
+                </div>
+
+                <div class="rotation-control-group">
+                    <div class="rotation-label">↕ 垂直:</div>
+                    <div class="rotation-mode" id="vertical-rotation">
+                        <div class="rotation-toggle" data-axis="xy">XY</div>
+                        <div class="rotation-toggle" data-axis="xz">XZ</div>
+                        <div class="rotation-toggle dimension-4" data-axis="xw">XW</div>
+                        <div class="rotation-toggle active" data-axis="yz">YZ</div>
+                        <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
+                        <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="rotation-control-group">
-                <div class="rotation-label">↕ 垂直スワイプ:</div>
-                <div class="rotation-mode" id="vertical-rotation">
-                    <div class="rotation-toggle" data-axis="xy">XY</div>
-                    <div class="rotation-toggle" data-axis="xz">XZ</div>
-                    <div class="rotation-toggle dimension-4" data-axis="xw">XW</div>
-                    <div class="rotation-toggle active" data-axis="yz">YZ</div>
-                    <div class="rotation-toggle dimension-4" data-axis="yw">YW</div>
-                    <div class="rotation-toggle dimension-4" data-axis="zw">ZW</div>
-                </div>
+            <!-- Help text (toggleable) -->
+            <div id="help-text" class="collapsed">
+                <strong>操作方法:</strong><br>
+                <span class="help-item">🖱️ ドラッグ: 回転</span>
+                <span class="help-item">🖱️ Shift+ドラッグ: 平行移動</span>
+                <span class="help-item">🖱️ ホイール: ズーム</span>
+                <span class="help-item">👆 タップ: マーク配置</span>
             </div>
 
-            <div id="action-buttons">
-                <button id="reset-btn">🔄 リセット</button>
-                <button id="auto-rotate-btn">⏸ 自動回転</button>
-            </div>
-            <div id="hint">1本指: スワイプで回転、タップでマーク | 2本指: パン/ピンチでカメラ操作</div>
             <div id="version"></div>
         </div>
     </div>

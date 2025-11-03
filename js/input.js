@@ -265,7 +265,7 @@ export class InputController extends EventTarget {
     }
 
     /**
-     * Setup action buttons (reset, auto-rotate)
+     * Setup action buttons (reset, auto-rotate, settings, help)
      */
     setupActionButtons() {
         const resetBtn = document.getElementById('reset-btn');
@@ -281,16 +281,44 @@ export class InputController extends EventTarget {
                 this.dispatchEvent(new CustomEvent('toggleAutoRotate'));
             });
         }
+
+        // Settings toggle button
+        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+        const advancedControls = document.getElementById('advanced-controls');
+        if (settingsToggleBtn && advancedControls) {
+            settingsToggleBtn.addEventListener('click', () => {
+                advancedControls.classList.toggle('collapsed');
+                // Close help when opening settings
+                if (!advancedControls.classList.contains('collapsed')) {
+                    const helpText = document.getElementById('help-text');
+                    if (helpText) helpText.classList.add('collapsed');
+                }
+            });
+        }
+
+        // Help toggle button
+        const helpBtn = document.getElementById('help-btn');
+        const helpText = document.getElementById('help-text');
+        if (helpBtn && helpText) {
+            helpBtn.addEventListener('click', () => {
+                helpText.classList.toggle('collapsed');
+                // Close settings when opening help
+                if (!helpText.classList.contains('collapsed')) {
+                    if (advancedControls) advancedControls.classList.add('collapsed');
+                }
+            });
+        }
     }
 
     /**
-     * Update auto-rotate button text
+     * Update auto-rotate button icon
      * @param {boolean} autoRotate
      */
     updateAutoRotateButton(autoRotate) {
         const btn = document.getElementById('auto-rotate-btn');
         if (btn) {
-            btn.textContent = autoRotate ? '⏸ 自動回転' : '▶ 自動回転';
+            btn.textContent = autoRotate ? '⏸' : '▶';
+            btn.title = autoRotate ? '自動回転を停止' : '自動回転を開始';
         }
     }
 
