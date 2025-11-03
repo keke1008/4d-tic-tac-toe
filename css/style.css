@@ -54,6 +54,16 @@ body {
     box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
 }
 
+#status.player-x-turn {
+    border-color: rgba(255, 0, 255, 0.8);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+}
+
+#status.player-o-turn {
+    border-color: rgba(0, 255, 255, 0.8);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+}
+
 #status.victory {
     animation: victoryPulse 1s ease-in-out infinite;
     font-size: 1.5em;
@@ -118,6 +128,7 @@ body {
 #compact-buttons {
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 8px;
     flex-wrap: wrap;
 }
@@ -125,9 +136,11 @@ body {
 .icon-btn {
     width: 44px;
     height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 0;
     font-size: 1.3em;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
@@ -136,6 +149,7 @@ body {
     color: #fff;
     cursor: pointer;
     transition: all 0.3s;
+    flex-shrink: 0;
 }
 
 .icon-btn:hover, .icon-btn:active {
