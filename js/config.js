@@ -2,7 +2,7 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
-export const VERSION = '1.5.0';
+export const VERSION = '1.6.0';
 
 export const CONFIG = {
     // Game settings
@@ -22,22 +22,29 @@ export const CONFIG = {
     CAMERA_DISTANCE_MIN: 8,
     CAMERA_DISTANCE_MAX: 20,
 
-    // Visual settings - Enhanced for better visibility
-    CELL_OPACITY_MIN: 0.5,        // Increased from 0.2
-    CELL_OPACITY_RANGE: 0.4,      // Increased from 0.3
+    // Visual settings - Darker unselected, bright when selected
+    CELL_OPACITY_MIN: 0.15,        // Darker for unselected cells
+    CELL_OPACITY_RANGE: 0.15,      // Smaller range
     CELL_SCALE_MIN: 0.7,
     CELL_SCALE_RANGE: 0.6,
-    CELL_LINE_WIDTH: 2,           // New: Thicker cell wireframes
+    CELL_LINE_WIDTH: 2,           // Thicker cell wireframes
 
-    CONNECTION_OPACITY_MIN: 0.25,  // Increased from 0.1
-    CONNECTION_OPACITY_RANGE: 0.25, // Increased from 0.15
-    CONNECTION_LINE_WIDTH: 1.5,    // New: Thicker connection lines
+    CONNECTION_OPACITY_MIN: 0.08,  // Much darker for unselected
+    CONNECTION_OPACITY_RANGE: 0.1, // Smaller range
+    CONNECTION_LINE_WIDTH: 1.5,    // Thicker connection lines
 
-    // Color settings (HSL) - More vibrant range
-    HUE_OFFSET: 0.15,              // Changed from 0.5 (red-orange)
-    HUE_RANGE: 0.6,                // Increased from 0.33 (wider spectrum)
-    SATURATION: 1.0,               // Full saturation
-    LIGHTNESS: 0.6,                // Brighter
+    // Color settings (HSL) - Darker for unselected
+    HUE_OFFSET: 0.15,              // red-orange
+    HUE_RANGE: 0.6,                // wider spectrum
+    SATURATION: 0.6,               // Lower saturation for unselected
+    LIGHTNESS: 0.3,                // Darker for unselected
+
+    // Selected cell/connection colors - Bright and vibrant
+    SELECTED_CELL_SATURATION: 1.0,
+    SELECTED_CELL_LIGHTNESS: 0.65,
+    SELECTED_CONNECTION_SATURATION: 1.0,
+    SELECTED_CONNECTION_LIGHTNESS: 0.55,
+    SELECTED_CONNECTION_OPACITY: 0.6,
 
     // Marker settings - Larger and more visible
     MARKER_SCALE: 0.8,             // Increased from 0.6

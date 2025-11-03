@@ -144,7 +144,7 @@ export class GridRenderer {
      * Delegates to ConnectionManager
      */
     updateConnectionLines() {
-        this.connectionManager.updateLines(this.rotations);
+        this.connectionManager.updateLines(this.rotations, this.cells);
     }
 
     /**

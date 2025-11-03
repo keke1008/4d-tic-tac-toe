@@ -56,10 +56,26 @@ export class ConnectionManager {
     /**
      * Update all connection lines based on current rotation
      * @param {Object} rotations - Rotation angles {xy, xz, xw, yz, yw, zw}
+     * @param {Array} cells - Array of cell objects (optional, for highlighting selected)
      */
-    updateLines(rotations) {
+    updateLines(rotations, cells = []) {
+        // Build set of selected cell positions for fast lookup
+        const selectedPositions = new Set();
+        cells.forEach(cell => {
+            if (cell.isSelected) {
+                // Create key from 4D position
+                const key = cell.pos4d.join(',');
+                selectedPositions.add(key);
+            }
+        });
+
         this.connectionLines.forEach(line => {
             const { pos4d1, pos4d2 } = line.userData;
+
+            // Check if either endpoint is a selected cell
+            const key1 = pos4d1.join(',');
+            const key2 = pos4d2.join(',');
+            const isSelected = selectedPositions.has(key1) || selectedPositions.has(key2);
 
             // Rotate and project endpoints
             const rotated1 = rotate4D(pos4d1, rotations);
@@ -81,10 +97,25 @@ export class ConnectionManager {
             const avgW = (w1 + w2) / 2;
             const hue = getHueFromW(avgW);
             const wFactor = (avgW + 2) / 4;
-            const opacity = CONFIG.CONNECTION_OPACITY_MIN + wFactor * CONFIG.CONNECTION_OPACITY_RANGE;
 
-            line.material.color.setHSL(hue, CONFIG.SATURATION * 0.8, CONFIG.LIGHTNESS * 0.7);
-            line.material.opacity = opacity;
+            if (isSelected) {
+                // Bright and vibrant for selected connections
+                line.material.color.setHSL(
+                    hue,
+                    CONFIG.SELECTED_CONNECTION_SATURATION,
+                    CONFIG.SELECTED_CONNECTION_LIGHTNESS
+                );
+                line.material.opacity = CONFIG.SELECTED_CONNECTION_OPACITY;
+            } else {
+                // Darker for unselected connections
+                const opacity = CONFIG.CONNECTION_OPACITY_MIN + wFactor * CONFIG.CONNECTION_OPACITY_RANGE;
+                line.material.color.setHSL(
+                    hue,
+                    CONFIG.SATURATION * 0.8,
+                    CONFIG.LIGHTNESS * 0.7
+                );
+                line.material.opacity = opacity;
+            }
         });
     }
 

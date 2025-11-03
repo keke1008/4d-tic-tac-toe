@@ -45,6 +45,7 @@ export class MarkerRenderer {
         // Add to cell
         cell.group.add(sprite);
         cell.marker = sprite;
+        cell.isSelected = true; // Mark cell as selected
 
         // Update cell wireframe appearance
         this.updateCellAppearance(cell, player);
@@ -54,13 +55,14 @@ export class MarkerRenderer {
 
     /**
      * Update cell wireframe appearance when marker is placed
+     * Makes the cell bright and vibrant
      * @param {Object} cell - Cell object
      * @param {string} player - 'X' or 'O'
      */
     updateCellAppearance(cell, player) {
         const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
         cell.wireframe.material.color.setHex(color);
-        cell.wireframe.material.opacity = 0.6;
+        cell.wireframe.material.opacity = 0.8; // Brighter opacity for selected cells
     }
 
     /**
@@ -73,6 +75,7 @@ export class MarkerRenderer {
             cell.marker.material.map.dispose();
             cell.marker.material.dispose();
             cell.marker = null;
+            cell.isSelected = false; // Mark cell as unselected
         }
 
         // Reset wireframe appearance
