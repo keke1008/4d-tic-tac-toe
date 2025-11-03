@@ -16,6 +16,7 @@ export class InputController extends EventTarget {
         // Gesture state
         this.swipeDirection = null; // 'horizontal' or 'vertical'
         this.lastPinchScale = 1;
+        this.lastPanDelta = { x: 0, y: 0 };
 
         this.setupHammer();
         this.setupRotationToggles();
@@ -124,13 +125,27 @@ export class InputController extends EventTarget {
         });
 
         // Two-finger pan - for camera movement
+        this.hammer.on('doublepanstart', () => {
+            this.lastPanDelta = { x: 0, y: 0 };
+        });
+
         this.hammer.on('doublepan', (e) => {
+            // Calculate incremental delta from last position
+            const currentDelta = { x: e.deltaX, y: e.deltaY };
+            const incrementalDeltaX = currentDelta.x - this.lastPanDelta.x;
+            const incrementalDeltaY = currentDelta.y - this.lastPanDelta.y;
+            this.lastPanDelta = currentDelta;
+
             this.dispatchEvent(new CustomEvent('cameraPan', {
                 detail: {
-                    deltaX: e.velocityX * 0.3,
-                    deltaY: -e.velocityY * 0.3
+                    deltaX: -incrementalDeltaX * 0.01, // Negative for natural direction
+                    deltaY: incrementalDeltaY * 0.01
                 }
             }));
+        });
+
+        this.hammer.on('doublepanend', () => {
+            this.lastPanDelta = { x: 0, y: 0 };
         });
 
         // Pinch - for camera zoom
