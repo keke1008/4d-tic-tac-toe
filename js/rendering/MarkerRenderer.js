@@ -34,7 +34,7 @@ export class MarkerRenderer {
 
     /**
      * Update cell wireframe appearance when marker is placed
-     * Makes the cell bright and vibrant
+     * Makes the cell bright and vibrant with thicker lines
      * @param {Object} cell - Cell object
      * @param {string} player - 'X' or 'O'
      */
@@ -42,6 +42,7 @@ export class MarkerRenderer {
         const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
         cell.wireframe.material.color.setHex(color);
         cell.wireframe.material.opacity = 0.8; // Brighter opacity for selected cells
+        cell.wireframe.material.linewidth = CONFIG.SELECTED_CELL_LINE_WIDTH; // Thicker lines
     }
 
     /**
@@ -60,6 +61,7 @@ export class MarkerRenderer {
         // Set a temporary neutral color until next frame
         cell.wireframe.material.color.setHex(0x4a4a6a);
         cell.wireframe.material.opacity = 0.25;
+        cell.wireframe.material.linewidth = CONFIG.CELL_LINE_WIDTH; // Reset line thickness
     }
 
     /**
