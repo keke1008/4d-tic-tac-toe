@@ -3,7 +3,6 @@
 **2D～6D+の多次元空間で楽しむ三目並べゲーム**
 
 [![Version](https://img.shields.io/badge/version-3.3.0-blue.svg)](https://github.com/keke1008/4d-tic-tac-toe)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 🎮 **[今すぐプレイ！](https://keke1008.github.io/4d-tic-tac-toe/)**
 
@@ -218,12 +217,6 @@ open http://localhost:8000
 - **プラグイン可能**: 新しい機能を容易に追加
 - **設定駆動**: CONFIG オブジェクトで一元管理
 
-## 📝 ライセンス
-
-MIT License - 自由に使用・改変・配布可能
-
 ---
 
 **多次元空間での戦略的思考を楽しんでください！** 🌌✨
-
-**作者**: [keke1008](https://github.com/keke1008)
