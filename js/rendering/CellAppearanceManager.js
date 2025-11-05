@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from '../config.js';
-import { getHueFromW } from '../math4d.js';
+import { getHueFromW } from '../mathnd.js';
 
 export class CellAppearanceManager {
     /**
