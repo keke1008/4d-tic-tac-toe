@@ -139,20 +139,8 @@ function projectOneDimensionDown(point, projectionDistance) {
  * - Returns [x3d, y3d, z3d, originalHighestDim]
  */
 export function projectNDto3D(point, projectionDistance = null) {
-    // Validate input
-    if (!Array.isArray(point) || point.length === 0) {
-        console.error('mathnd.projectNDto3D: Invalid point', point);
-        return [0, 0, 0, 0];
-    }
-
     if (!projectionDistance) {
         projectionDistance = CONFIG.PROJECTION_DISTANCE_4D || 3;
-    }
-
-    // Validate projection distance
-    if (typeof projectionDistance !== 'number' || projectionDistance <= 0) {
-        console.warn('mathnd.projectNDto3D: Invalid projection distance, using default', projectionDistance);
-        projectionDistance = 3;
     }
 
     // If already 3D or less, return as-is (padded to 4 elements)

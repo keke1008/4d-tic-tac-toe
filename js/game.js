@@ -59,31 +59,7 @@ export class GameBoard {
      * @returns {boolean} True if coordinates are valid
      */
     isValidCoordinate(coords) {
-        const isValid = BoardAccessor.isValidCoordinate(coords, this.dimensions, this.gridSize);
-
-        if (!isValid) {
-            // Provide detailed error messages for debugging
-            if (!Array.isArray(coords)) {
-                console.warn('GameBoard: Coordinates must be an array');
-            } else if (coords.length !== this.dimensions) {
-                console.warn(`GameBoard: Expected ${this.dimensions} coordinates, got ${coords.length}`);
-            } else {
-                // Check each coordinate for specific error
-                for (let i = 0; i < coords.length; i++) {
-                    const coord = coords[i];
-                    if (typeof coord !== 'number' || !Number.isInteger(coord)) {
-                        console.warn(`GameBoard: Coordinate at index ${i} must be an integer, got ${coord}`);
-                        break;
-                    }
-                    if (coord < 0 || coord >= this.gridSize) {
-                        console.warn(`GameBoard: Coordinate ${coord} at index ${i} is out of bounds [0, ${this.gridSize - 1}]`);
-                        break;
-                    }
-                }
-            }
-        }
-
-        return isValid;
+        return BoardAccessor.isValidCoordinate(coords, this.dimensions, this.gridSize);
     }
 
     /**
@@ -128,17 +104,7 @@ export class GameBoard {
      * @param {string} player - Player marker
      */
     setMarkerAt(coords, player) {
-        // Validate coordinates
-        if (!this.isValidCoordinate(coords)) {
-            console.error('GameBoard.setMarkerAt: Invalid coordinates', coords);
-            return;
-        }
-
-        // Use BoardAccessor utility for consistent board access
-        const success = BoardAccessor.setMarkerAt(this.board, coords, player);
-        if (!success) {
-            console.error('GameBoard.setMarkerAt: Failed to set marker', coords, player);
-        }
+        BoardAccessor.setMarkerAt(this.board, coords, player);
     }
 
     /**
@@ -148,13 +114,6 @@ export class GameBoard {
      */
     getMarker(...args) {
         const coords = Array.isArray(args[0]) ? args[0] : args;
-
-        // Validate coordinates
-        if (!this.isValidCoordinate(coords)) {
-            return null;
-        }
-
-        // Use BoardAccessor utility for consistent board access
         return BoardAccessor.getMarkerAt(this.board, coords);
     }
 

@@ -32,13 +32,12 @@ export class BoardAccessor {
      * @param {Array|Map} board - Game board (nested arrays or Map)
      * @param {Array<number>} coords - N-dimensional coordinates
      * @param {string} player - Player marker ('X' or 'O')
-     * @returns {boolean} True if successfully set
      */
     static setMarkerAt(board, coords, player) {
         // Handle Map-based storage (5D+)
         if (board instanceof Map) {
             board.set(coords.join(','), player);
-            return true;
+            return;
         }
 
         // Handle nested array storage (2D-4D)
@@ -46,13 +45,8 @@ export class BoardAccessor {
         let current = board;
         for (let i = coords.length - 1; i > 0; i--) {
             current = current[coords[i]];
-            if (!current) {
-                console.error('BoardAccessor.setMarkerAt: Invalid nested array access', coords);
-                return false;
-            }
         }
         current[coords[0]] = player;
-        return true;
     }
 
     /**

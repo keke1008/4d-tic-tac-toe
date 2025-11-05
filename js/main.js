@@ -85,12 +85,7 @@ class Game {
         if (!cell) return;
 
         // Use coordsArray for N-dimensional support
-        const coords = cell.coordsArray || [];
-        if (coords.length === 0) {
-            console.error('Game.handleCellClick: Invalid cell coordinates');
-            return;
-        }
-
+        const coords = cell.coordsArray;
         const currentPlayer = this.gameBoard.getCurrentPlayer();
         const previewCell = this.renderer.getPreviewCell();
 
