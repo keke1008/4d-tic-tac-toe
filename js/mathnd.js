@@ -104,7 +104,20 @@ function projectOneDimensionDown(point, projectionDistance) {
 
     // Last dimension is the one we're projecting away
     const lastDim = point[point.length - 1];
-    const factor = projectionDistance / (projectionDistance - lastDim);
+    const denominator = projectionDistance - lastDim;
+
+    // Prevent division by zero
+    if (Math.abs(denominator) < 0.0001) {
+        console.warn('mathnd.projectOneDimensionDown: Near-zero denominator, using fallback projection');
+        // Use orthographic projection as fallback
+        const result = [];
+        for (let i = 0; i < point.length - 1; i++) {
+            result.push(point[i]);
+        }
+        return result;
+    }
+
+    const factor = projectionDistance / denominator;
 
     // Project all other dimensions
     const result = [];
@@ -126,8 +139,20 @@ function projectOneDimensionDown(point, projectionDistance) {
  * - Returns [x3d, y3d, z3d, originalHighestDim]
  */
 export function projectNDto3D(point, projectionDistance = null) {
+    // Validate input
+    if (!Array.isArray(point) || point.length === 0) {
+        console.error('mathnd.projectNDto3D: Invalid point', point);
+        return [0, 0, 0, 0];
+    }
+
     if (!projectionDistance) {
         projectionDistance = CONFIG.PROJECTION_DISTANCE_4D || 3;
+    }
+
+    // Validate projection distance
+    if (typeof projectionDistance !== 'number' || projectionDistance <= 0) {
+        console.warn('mathnd.projectNDto3D: Invalid projection distance, using default', projectionDistance);
+        projectionDistance = 3;
     }
 
     // If already 3D or less, return as-is (padded to 4 elements)

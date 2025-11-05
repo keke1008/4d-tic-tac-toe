@@ -84,22 +84,28 @@ class Game {
         const cell = this.renderer.getCellAtMouse(mouseX, mouseY);
         if (!cell) return;
 
-        const { x, y, z, w } = cell.coords;
+        // Use coordsArray for N-dimensional support
+        const coords = cell.coordsArray || [];
+        if (coords.length === 0) {
+            console.error('Game.handleCellClick: Invalid cell coordinates');
+            return;
+        }
+
         const currentPlayer = this.gameBoard.getCurrentPlayer();
         const previewCell = this.renderer.getPreviewCell();
 
         // Check if this cell is already occupied
-        if (this.gameBoard.getMarker(x, y, z, w)) return;
+        if (this.gameBoard.getMarker(coords)) return;
 
         // If clicking the already previewed cell → confirm placement
         if (previewCell === cell) {
             // Try to place marker
-            if (this.gameBoard.placeMarker(x, y, z, w)) {
+            if (this.gameBoard.placeMarker(coords)) {
                 this.renderer.createMarker(cell, currentPlayer);
                 this.renderer.clearPreviewSelection();
 
                 // Check win condition
-                if (this.gameBoard.checkWin(x, y, z, w)) {
+                if (this.gameBoard.checkWin(coords)) {
                     this.gameBoard.setGameOver(currentPlayer);
                     this.updateStatus(null, true); // Victory!
                 } else if (this.gameBoard.isBoardFull()) {

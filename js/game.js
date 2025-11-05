@@ -53,6 +53,40 @@ export class GameBoard {
     }
 
     /**
+     * Validate coordinates
+     * @param {Array<number>} coords - Coordinates to validate
+     * @returns {boolean} True if coordinates are valid
+     */
+    isValidCoordinate(coords) {
+        // Check if coords is an array
+        if (!Array.isArray(coords)) {
+            console.warn('GameBoard: Coordinates must be an array');
+            return false;
+        }
+
+        // Check dimension count
+        if (coords.length !== this.dimensions) {
+            console.warn(`GameBoard: Expected ${this.dimensions} coordinates, got ${coords.length}`);
+            return false;
+        }
+
+        // Check each coordinate is within bounds
+        for (let i = 0; i < coords.length; i++) {
+            const coord = coords[i];
+            if (typeof coord !== 'number' || !Number.isInteger(coord)) {
+                console.warn(`GameBoard: Coordinate at index ${i} must be an integer, got ${coord}`);
+                return false;
+            }
+            if (coord < 0 || coord >= this.gridSize) {
+                console.warn(`GameBoard: Coordinate ${coord} at index ${i} is out of bounds [0, ${this.gridSize - 1}]`);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Place a marker at the specified coordinates
      * @param {...number|Array<number>} args - Either individual coords or array
      * @returns {boolean} True if placement was successful
@@ -64,6 +98,11 @@ export class GameBoard {
      */
     placeMarker(...args) {
         const coords = Array.isArray(args[0]) ? args[0] : args;
+
+        // Validate coordinates
+        if (!this.isValidCoordinate(coords)) {
+            return false;
+        }
 
         if (this.gameOver) return false;
         if (this.getMarker(...coords)) return false;
@@ -89,6 +128,12 @@ export class GameBoard {
      * @param {string} player - Player marker
      */
     setMarkerAt(coords, player) {
+        // Validate coordinates
+        if (!this.isValidCoordinate(coords)) {
+            console.error('GameBoard.setMarkerAt: Invalid coordinates', coords);
+            return;
+        }
+
         if (this.board instanceof Map) {
             // Map-based storage
             this.board.set(coords.join(','), player);
@@ -97,6 +142,10 @@ export class GameBoard {
             let current = this.board;
             for (let i = coords.length - 1; i > 0; i--) {
                 current = current[coords[i]];
+                if (!current) {
+                    console.error('GameBoard.setMarkerAt: Invalid nested array access', coords);
+                    return;
+                }
             }
             current[coords[0]] = player;
         }
@@ -109,6 +158,11 @@ export class GameBoard {
      */
     getMarker(...args) {
         const coords = Array.isArray(args[0]) ? args[0] : args;
+
+        // Validate coordinates
+        if (!this.isValidCoordinate(coords)) {
+            return null;
+        }
 
         if (this.board instanceof Map) {
             return this.board.get(coords.join(',')) || null;

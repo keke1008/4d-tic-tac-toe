@@ -195,14 +195,40 @@ export class GridRenderer {
      * @returns {Object|null} Cell object or null
      */
     getCellAtMouse(mouseX, mouseY) {
-        const mouse = new THREE.Vector2(mouseX, mouseY);
-        const raycaster = this.sceneManager.getRaycaster();
-        raycaster.setFromCamera(mouse, this.cameraController.getCamera());
-        const intersects = raycaster.intersectObjects(this.cellMeshes);
-
-        if (intersects.length > 0) {
-            return intersects[0].object.userData.cell;
+        // Validate input
+        if (typeof mouseX !== 'number' || typeof mouseY !== 'number') {
+            console.warn('GridRenderer.getCellAtMouse: Invalid mouse coordinates', mouseX, mouseY);
+            return null;
         }
+
+        if (!this.sceneManager || !this.cameraController || !this.cellMeshes) {
+            console.warn('GridRenderer.getCellAtMouse: Renderer not fully initialized');
+            return null;
+        }
+
+        try {
+            const mouse = new THREE.Vector2(mouseX, mouseY);
+            const raycaster = this.sceneManager.getRaycaster();
+            const camera = this.cameraController.getCamera();
+
+            if (!raycaster || !camera) {
+                console.warn('GridRenderer.getCellAtMouse: Raycaster or camera not available');
+                return null;
+            }
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(this.cellMeshes);
+
+            if (intersects.length > 0 && intersects[0].object && intersects[0].object.userData) {
+                const cell = intersects[0].object.userData.cell;
+                if (cell) {
+                    return cell;
+                }
+            }
+        } catch (error) {
+            console.error('GridRenderer.getCellAtMouse: Error during raycasting', error);
+        }
+
         return null;
     }
 
