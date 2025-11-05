@@ -171,4 +171,27 @@ export class SceneManager {
     getAspect() {
         return this.container.clientWidth / this.container.clientHeight;
     }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        // Remove resize event listener
+        window.removeEventListener('resize', this.handleResize.bind(this));
+
+        // Dispose renderer
+        if (this.renderer) {
+            this.renderer.dispose();
+            if (this.renderer.domElement && this.renderer.domElement.parentNode) {
+                this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+            }
+        }
+
+        // Clear scene
+        if (this.scene) {
+            while (this.scene.children.length > 0) {
+                this.scene.remove(this.scene.children[0]);
+            }
+        }
+    }
 }

@@ -170,4 +170,11 @@ export class ConnectionManager {
         });
         this.connectionLines = [];
     }
+
+    /**
+     * Dispose of all resources (alias for clear)
+     */
+    dispose() {
+        this.clear();
+    }
 }

@@ -61,10 +61,13 @@ class Game {
             this.handleCellClick(e.detail.mouseX, e.detail.mouseY);
         });
 
-        // Reset game
+        // Reset game - show settings modal
         this.inputController.addEventListener('reset', () => {
-            this.reset();
+            this.showSettingsModal();
         });
+
+        // Setup modal event listeners
+        this.setupModalListeners();
 
         // Toggle auto-rotate
         this.inputController.addEventListener('toggleAutoRotate', () => {
@@ -134,6 +137,161 @@ class Game {
         this.gameBoard.reset();
         this.renderer.clearMarkers();
         this.updateStatus(); // Reset to normal turn display
+    }
+
+    /**
+     * Show settings modal
+     */
+    showSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        if (!modal) return;
+
+        // Set current values
+        const dimensionSelect = document.getElementById('dimension-select');
+        const gridsizeSelect = document.getElementById('gridsize-select');
+
+        if (dimensionSelect) {
+            dimensionSelect.value = this.dimensions.toString();
+        }
+        if (gridsizeSelect) {
+            gridsizeSelect.value = CONFIG.GRID_SIZE.toString();
+        }
+
+        // Update info displays
+        this.updateDimensionInfo();
+        this.updateGridSizeInfo();
+
+        // Show modal
+        modal.classList.add('show');
+    }
+
+    /**
+     * Hide settings modal
+     */
+    hideSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+
+    /**
+     * Setup modal event listeners
+     */
+    setupModalListeners() {
+        const modal = document.getElementById('settings-modal');
+        const dimensionSelect = document.getElementById('dimension-select');
+        const gridsizeSelect = document.getElementById('gridsize-select');
+        const applyBtn = document.getElementById('apply-settings-btn');
+        const cancelBtn = document.getElementById('cancel-settings-btn');
+
+        // Update info when dimension changes
+        if (dimensionSelect) {
+            dimensionSelect.addEventListener('change', () => {
+                this.updateDimensionInfo();
+                this.updateGridSizeInfo(); // Cell count depends on both
+            });
+        }
+
+        // Update info when grid size changes
+        if (gridsizeSelect) {
+            gridsizeSelect.addEventListener('change', () => {
+                this.updateGridSizeInfo();
+            });
+        }
+
+        // Apply settings and restart game
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                const newDimensions = parseInt(dimensionSelect.value);
+                const newGridSize = parseInt(gridsizeSelect.value);
+
+                this.hideSettingsModal();
+                this.reinitializeGame(newDimensions, newGridSize);
+            });
+        }
+
+        // Cancel - just close modal
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.hideSettingsModal();
+            });
+        }
+
+        // Close modal when clicking outside
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideSettingsModal();
+                }
+            });
+        }
+    }
+
+    /**
+     * Update dimension info display
+     */
+    updateDimensionInfo() {
+        const dimensionSelect = document.getElementById('dimension-select');
+        const dimensionInfo = document.getElementById('dimension-info');
+
+        if (!dimensionSelect || !dimensionInfo) return;
+
+        const dims = parseInt(dimensionSelect.value);
+        const rotationPlanes = generateRotationPlanes(dims);
+        const planeCount = rotationPlanes.length;
+
+        dimensionInfo.textContent = `回転平面: ${planeCount}個`;
+    }
+
+    /**
+     * Update grid size info display
+     */
+    updateGridSizeInfo() {
+        const dimensionSelect = document.getElementById('dimension-select');
+        const gridsizeSelect = document.getElementById('gridsize-select');
+        const cellsInfo = document.getElementById('cells-info');
+
+        if (!dimensionSelect || !gridsizeSelect || !cellsInfo) return;
+
+        const dims = parseInt(dimensionSelect.value);
+        const gridSize = parseInt(gridsizeSelect.value);
+        const totalCells = Math.pow(gridSize, dims);
+
+        cellsInfo.textContent = `セル数: ${totalCells}個`;
+    }
+
+    /**
+     * Reinitialize game with new settings
+     * @param {number} newDimensions - New dimension count
+     * @param {number} newGridSize - New grid size
+     */
+    reinitializeGame(newDimensions, newGridSize) {
+        // Update CONFIG
+        CONFIG.DIMENSIONS = newDimensions;
+        CONFIG.GRID_SIZE = newGridSize;
+
+        // Store current settings
+        this.dimensions = newDimensions;
+
+        // Dispose old renderer
+        this.renderer.dispose();
+
+        // Recreate components
+        const container = document.getElementById('canvas-container');
+        this.renderer = new GridRenderer(container);
+        this.gameBoard = new GameBoard();
+        this.inputController = new InputController(this.renderer.getCanvas());
+
+        // Reset game state
+        this.autoRotate = true;
+        this.rotationSpeed = CONFIG.ROTATION_SPEED;
+        this.rotations = this.initializeRotations();
+
+        // Reattach event listeners
+        this.setupEventListeners();
+        this.updateStatus();
+        this.inputController.updateAutoRotateButton(this.autoRotate);
     }
 
     /**

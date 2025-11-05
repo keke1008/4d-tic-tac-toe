@@ -333,4 +333,46 @@ export class GridRenderer {
     getCanvas() {
         return this.sceneManager.getCanvas();
     }
+
+    /**
+     * Dispose of all Three.js resources
+     */
+    dispose() {
+        // Clear markers
+        this.markerRenderer.clearAllMarkers(this.cells);
+
+        // Dispose connection manager
+        if (this.connectionManager) {
+            this.connectionManager.dispose();
+        }
+
+        // Dispose cell meshes
+        this.cells.forEach(cell => {
+            if (cell.group) {
+                // Remove group from scene
+                this.sceneManager.remove(cell.group);
+
+                // Dispose geometries and materials
+                cell.group.traverse((child) => {
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                });
+            }
+        });
+
+        // Clear arrays
+        this.cells = [];
+        this.cellMeshes = [];
+
+        // Dispose scene manager
+        this.sceneManager.dispose();
+    }
 }
