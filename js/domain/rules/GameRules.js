@@ -4,6 +4,7 @@
  */
 
 import { GameState } from '../state/GameState.js';
+import { WinChecker } from './WinChecker.js';
 
 /**
  * Game rules - all pure functions
@@ -28,7 +29,6 @@ export class GameRules {
         let newState = state.withMarker(position, actualPlayer);
 
         // Check win condition
-        const WinChecker = require('./WinChecker.js').WinChecker;
         if (WinChecker.hasWinningLine(newState.board, position, actualPlayer, newState.settings)) {
             return newState.withWinner(actualPlayer);
         }

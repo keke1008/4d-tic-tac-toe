@@ -3,6 +3,8 @@
  * All methods return new instances, never mutate existing state
  */
 
+import { BoardState } from './BoardState.js';
+
 /**
  * Game state class (Immutable)
  */
@@ -29,9 +31,6 @@ export class GameState {
      * @returns {GameState}
      */
     static initial(settings) {
-        // Import BoardState dynamically to avoid circular dependency
-        const BoardState = require('./BoardState.js').BoardState;
-
         return new GameState({
             board: BoardState.empty(settings.dimensions, settings.gridSize),
             currentPlayer: 'X',
@@ -155,8 +154,6 @@ export class GameState {
      * @returns {GameState}
      */
     static fromPlain(data) {
-        const BoardState = require('./BoardState.js').BoardState;
-
         return new GameState({
             ...data,
             board: data.board ? BoardState.fromPlain(data.board) : null

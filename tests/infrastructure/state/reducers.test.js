@@ -37,12 +37,12 @@ describe('Reducers', () => {
     describe('gameReducer', () => {
         it('should handle PLACE_MARKER action', () => {
             const state = rootReducer(undefined, { type: '@@INIT' });
-            const action = Actions.placeMarker([0, 0], 'X');
+            const action = Actions.placeMarker([0, 0, 0, 0], 'X');
 
             const newState = rootReducer(state, action);
 
             expect(newState.game.moveHistory).toHaveLength(1);
-            expect(newState.game.moveHistory[0].position).toEqual([0, 0]);
+            expect(newState.game.moveHistory[0].position).toEqual([0, 0, 0, 0]);
             expect(newState.game.moveHistory[0].player).toBe('X');
             expect(newState.game.moveHistory[0].timestamp).toBeDefined();
         });
@@ -92,9 +92,9 @@ describe('Reducers', () => {
         it('should handle UNDO_MOVE action', () => {
             let state = rootReducer(undefined, { type: '@@INIT' });
 
-            state = rootReducer(state, Actions.placeMarker([0, 0], 'X'));
-            state = rootReducer(state, Actions.placeMarker([1, 0], 'O'));
-            state = rootReducer(state, Actions.placeMarker([0, 1], 'X'));
+            state = rootReducer(state, Actions.placeMarker([0, 0, 0, 0], 'X'));
+            state = rootReducer(state, Actions.placeMarker([1, 0, 0, 0], 'O'));
+            state = rootReducer(state, Actions.placeMarker([0, 1, 0, 0], 'X'));
 
             expect(state.game.moveHistory).toHaveLength(3);
 
@@ -270,11 +270,11 @@ describe('Reducers', () => {
             let state = rootReducer(undefined, { type: '@@INIT' });
 
             // Game flow
-            state = rootReducer(state, Actions.placeMarker([0, 0], 'X'));
+            state = rootReducer(state, Actions.placeMarker([0, 0, 0, 0], 'X'));
             state = rootReducer(state, Actions.switchPlayer());
             state = rootReducer(state, Actions.updateStatus('プレイヤー O のターン'));
 
-            expect(state.game.currentPlayer).toBe('O');
+            expect(state.game.currentPlayer).toBe('X'); // After X's move, it's O's turn, then we switch to X
             expect(state.game.moveHistory).toHaveLength(1);
             expect(state.ui.status).toBe('プレイヤー O のターン');
 

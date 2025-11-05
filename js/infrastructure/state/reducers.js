@@ -3,20 +3,19 @@
  * Pure functions that update state based on actions
  */
 import { ActionTypes } from './actions.js';
+import { GameRules } from '../../domain/rules/GameRules.js';
+import { GameState } from '../../domain/state/GameState.js';
+
+// Initial game settings
+const defaultSettings = {
+    dimensions: 4,
+    gridSize: 4,
+};
 
 // Initial state structure
 export const initialState = {
-    game: {
-        board: null,  // Will be initialized with proper BoardState in Phase 2
-        currentPlayer: 'X',
-        gamePhase: 'playing',  // 'playing' | 'won' | 'draw'
-        winner: null,
-        moveHistory: [],
-    },
-    settings: {
-        dimensions: 4,
-        gridSize: 4,
-    },
+    game: GameState.initial(defaultSettings).toPlain(),
+    settings: defaultSettings,
     visual: {
         rotation: {},  // { xy: 0, xz: 0, ... }
         cameraPosition: { x: 0, y: 0, z: 12 },
@@ -50,32 +49,27 @@ export function rootReducer(state = initialState, action) {
 
 /**
  * Game state reducer
- * @param {Object} state - Current game state
+ * Integrates with Domain Layer (GameRules)
+ * @param {Object} state - Current game state (plain object)
  * @param {Object} action - Action to process
  * @param {Object} rootState - Full root state (for cross-slice access if needed)
- * @returns {Object} New game state
+ * @returns {Object} New game state (plain object)
  */
 function gameReducer(state = initialState.game, action, rootState) {
-    switch (action.type) {
-        case ActionTypes.PLACE_MARKER:
-            // Placeholder - will be replaced with GameRules.placeMarker in Phase 2
-            return {
-                ...state,
-                moveHistory: [
-                    ...state.moveHistory,
-                    {
-                        position: action.payload.position,
-                        player: action.payload.player,
-                        timestamp: Date.now()
-                    }
-                ]
-            };
+    // Convert plain state to GameState
+    const gameState = GameState.fromPlain(state);
 
-        case ActionTypes.SWITCH_PLAYER:
-            return {
-                ...state,
-                currentPlayer: state.currentPlayer === 'X' ? 'O' : 'X'
-            };
+    switch (action.type) {
+        case ActionTypes.PLACE_MARKER: {
+            const { position, player } = action.payload;
+            const newGameState = GameRules.placeMarker(gameState, position, player);
+            return newGameState.toPlain();
+        }
+
+        case ActionTypes.SWITCH_PLAYER: {
+            const nextPlayer = GameRules.nextPlayer(gameState.currentPlayer);
+            return gameState.withPlayer(nextPlayer).toPlain();
+        }
 
         case ActionTypes.SET_GAME_PHASE:
             return {
@@ -84,27 +78,25 @@ function gameReducer(state = initialState.game, action, rootState) {
             };
 
         case ActionTypes.SET_WINNER:
-            return {
-                ...state,
-                winner: action.payload.winner,
-                gamePhase: 'won'
-            };
+            return gameState.withWinner(action.payload.winner).toPlain();
 
-        case ActionTypes.RESET_GAME:
-            return {
-                ...initialState.game,
-                // Reset with potentially new settings
-            };
+        case ActionTypes.RESET_GAME: {
+            const settings = action.payload.settings || rootState.settings;
+            const newGameState = GameRules.reset(GameState.initial(settings));
+            return newGameState.toPlain();
+        }
 
-        case ActionTypes.UNDO_MOVE:
-            // Placeholder - will be implemented in Phase 2 with GameRules
-            if (state.moveHistory.length === 0) {
-                return state;
-            }
-            return {
-                ...state,
-                moveHistory: state.moveHistory.slice(0, -1)
-            };
+        case ActionTypes.UNDO_MOVE: {
+            const newGameState = GameRules.undo(gameState);
+            return newGameState.toPlain();
+        }
+
+        case ActionTypes.UPDATE_SETTINGS: {
+            // When settings change, reset the game
+            const newSettings = action.payload.settings;
+            const newGameState = GameRules.updateSettings(gameState, newSettings);
+            return newGameState.toPlain();
+        }
 
         default:
             return state;
