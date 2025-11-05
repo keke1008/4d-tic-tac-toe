@@ -68,6 +68,44 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2>ゲーム設定</h2>
+
+            <div class="setting-group">
+                <label for="dimension-select">次元数:</label>
+                <select id="dimension-select">
+                    <option value="2">2D (平面)</option>
+                    <option value="3">3D (立方体)</option>
+                    <option value="4" selected>4D (超立方体)</option>
+                    <option value="5">5D</option>
+                    <option value="6">6D</option>
+                </select>
+                <span class="setting-info" id="dimension-info">回転平面: 6個</span>
+            </div>
+
+            <div class="setting-group">
+                <label for="gridsize-select">グリッドサイズ (n目並べ):</label>
+                <select id="gridsize-select">
+                    <option value="3">3×3×... (3目並べ)</option>
+                    <option value="4" selected>4×4×... (4目並べ)</option>
+                    <option value="5">5×5×... (5目並べ)</option>
+                </select>
+                <span class="setting-info" id="cells-info">セル数: 256個</span>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="apply-settings-btn" class="modal-btn primary">適用して再起動</button>
+                <button id="cancel-settings-btn" class="modal-btn">キャンセル</button>
+            </div>
+
+            <div class="setting-warning">
+                ⚠️ 次元数やグリッドサイズを変更するとゲームがリセットされます
+            </div>
+        </div>
+    </div>
+
     <!-- Three.js library -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
