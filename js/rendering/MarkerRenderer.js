@@ -52,7 +52,7 @@ export class MarkerRenderer {
     clearMarkerFromCell(cell) {
         if (cell.marker) {
             // No sprite to remove, just clear flags
-            cell.marker = null;
+            cell.marker = false;     // Use boolean consistently
             cell.isSelected = false; // Mark cell as unselected
             cell.player = null;      // Clear player tracking
         }
@@ -78,7 +78,7 @@ export class MarkerRenderer {
      * @returns {boolean} True if cell has a marker
      */
     hasMarker(cell) {
-        return cell.marker !== null && cell.marker !== false;
+        return cell.marker === true;
     }
 
     /**
