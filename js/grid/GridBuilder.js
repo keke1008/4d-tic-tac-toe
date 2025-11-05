@@ -71,7 +71,7 @@ export class GridBuilder {
             group: null,            // Will be set by renderer
             wireframe: null,        // Will be set by renderer
             selectionMesh: null,    // Will be set by renderer
-            marker: null            // Will be set when marker is placed
+            marker: false           // Boolean flag: true when marker is placed
         };
     }
 

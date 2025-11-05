@@ -79,9 +79,11 @@ export class SceneManager {
      */
     setupResizeHandler() {
         this.resizeCallback = null;
-        window.addEventListener('resize', () => {
+        // Store bound function reference for proper cleanup
+        this.boundHandleResize = () => {
             this.handleResize();
-        });
+        };
+        window.addEventListener('resize', this.boundHandleResize);
     }
 
     /**
@@ -176,8 +178,10 @@ export class SceneManager {
      * Dispose of all resources
      */
     dispose() {
-        // Remove resize event listener
-        window.removeEventListener('resize', this.handleResize.bind(this));
+        // Remove resize event listener properly
+        if (this.boundHandleResize) {
+            window.removeEventListener('resize', this.boundHandleResize);
+        }
 
         // Dispose renderer
         if (this.renderer) {
