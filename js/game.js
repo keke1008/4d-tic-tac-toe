@@ -5,6 +5,7 @@
 
 import { CONFIG } from './config.js';
 import { WinChecker } from './game/WinChecker.js';
+import { BoardAccessor } from './utils/BoardAccessor.js';
 
 export class GameBoard {
     constructor() {
@@ -53,6 +54,15 @@ export class GameBoard {
     }
 
     /**
+     * Validate coordinates
+     * @param {Array<number>} coords - Coordinates to validate
+     * @returns {boolean} True if coordinates are valid
+     */
+    isValidCoordinate(coords) {
+        return BoardAccessor.isValidCoordinate(coords, this.dimensions, this.gridSize);
+    }
+
+    /**
      * Place a marker at the specified coordinates
      * @param {...number|Array<number>} args - Either individual coords or array
      * @returns {boolean} True if placement was successful
@@ -64,6 +74,11 @@ export class GameBoard {
      */
     placeMarker(...args) {
         const coords = Array.isArray(args[0]) ? args[0] : args;
+
+        // Validate coordinates
+        if (!this.isValidCoordinate(coords)) {
+            return false;
+        }
 
         if (this.gameOver) return false;
         if (this.getMarker(...coords)) return false;
@@ -89,17 +104,7 @@ export class GameBoard {
      * @param {string} player - Player marker
      */
     setMarkerAt(coords, player) {
-        if (this.board instanceof Map) {
-            // Map-based storage
-            this.board.set(coords.join(','), player);
-        } else {
-            // Nested array storage (reverse order: board[w][z][y][x] for 4D)
-            let current = this.board;
-            for (let i = coords.length - 1; i > 0; i--) {
-                current = current[coords[i]];
-            }
-            current[coords[0]] = player;
-        }
+        BoardAccessor.setMarkerAt(this.board, coords, player);
     }
 
     /**
@@ -109,18 +114,7 @@ export class GameBoard {
      */
     getMarker(...args) {
         const coords = Array.isArray(args[0]) ? args[0] : args;
-
-        if (this.board instanceof Map) {
-            return this.board.get(coords.join(',')) || null;
-        }
-
-        // Nested array access (reverse order)
-        let current = this.board;
-        for (let i = coords.length - 1; i >= 0; i--) {
-            current = current[coords[i]];
-            if (current === undefined) return null;
-        }
-        return current;
+        return BoardAccessor.getMarkerAt(this.board, coords);
     }
 
     /**

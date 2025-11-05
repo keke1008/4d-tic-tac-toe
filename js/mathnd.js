@@ -104,7 +104,20 @@ function projectOneDimensionDown(point, projectionDistance) {
 
     // Last dimension is the one we're projecting away
     const lastDim = point[point.length - 1];
-    const factor = projectionDistance / (projectionDistance - lastDim);
+    const denominator = projectionDistance - lastDim;
+
+    // Prevent division by zero
+    if (Math.abs(denominator) < CONFIG.PROJECTION_EPSILON) {
+        console.warn('mathnd.projectOneDimensionDown: Near-zero denominator, using fallback projection');
+        // Use orthographic projection as fallback
+        const result = [];
+        for (let i = 0; i < point.length - 1; i++) {
+            result.push(point[i]);
+        }
+        return result;
+    }
+
+    const factor = projectionDistance / denominator;
 
     // Project all other dimensions
     const result = [];

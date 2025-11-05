@@ -124,9 +124,12 @@ js/
 │   ├── GestureHandler.js       # タッチジェスチャー
 │   └── UIController.js         # UI操作
 │
-└── ui/
-    ├── SettingsModal.js        # 設定モーダル
-    └── UIManager.js            # ステータス表示
+├── ui/
+│   ├── SettingsModal.js        # 設定モーダル
+│   └── UIManager.js            # ステータス表示
+│
+└── utils/
+    └── BoardAccessor.js        # ボードアクセスユーティリティ
 ```
 
 ### 主要機能
@@ -175,9 +178,51 @@ open http://localhost:8000
 └── js/                 # JavaScriptモジュール (19ファイル)
 ```
 
+## 🔧 最新のリファクタリング (2025-11-05)
+
+包括的なコード品質改善を実施しました:
+
+### Phase 1: 緊急バグ修正 ✅
+- 🐛 **メモリリーク修正**: SceneManagerのイベントリスナー削除処理を修正
+- 🐛 **型不整合修正**: MarkerRendererの`cell.marker`をboolean型に統一
+
+### Phase 2: 堅牢性向上 ✅
+- 🛡️ **エラーハンドリング追加**: GameBoard, GridRenderer, mathnd.jsに包括的な検証
+- 🛡️ **入力バリデーション**: SettingsModalで次元数・グリッドサイズを検証
+- 🛡️ **除算ゼロ保護**: 投影関数での数学的安全性を確保
+- 🛡️ **N次元完全対応**: main.jsで4D専用コードをN次元対応に修正
+
+### Phase 4: コード品質向上 ✅
+- ♻️ **重複削除**: BoardAccessorユーティリティで共通ロジック統合
+  - GameBoard.getMarker: 13行 → 5行 (-62%)
+  - WinChecker.getMarkerAt: 13行 → 3行 (-77%)
+- 📏 **定数化**: マジックナンバーをCONFIGに集約
+  - SWIPE_ROTATION_MULTIPLIER, CAMERA_PAN_SENSITIVITY等を追加
+- 📝 **コーディングルール**: CODING_GUIDELINES.md を新規作成
+
+### バリデーション最適化 ✅
+- ⚡ **不要な型チェック削除**: JSDocを信頼し、内部関数の型検証を削減
+  - GridRenderer.getCellAtMouse: 36行 → 11行 (-69%)
+  - GameBoard内部メソッド: 62行 → 7行 (-89%)
+  - **合計 -90行** のコード削減
+
+### 新規ドキュメント
+- 📚 **REFACTOR.md**: 8フェーズの詳細なリファクタリング計画
+- 📚 **CODING_GUIDELINES.md**: プロジェクトのコーディング規約
+
+**詳細**: [REFACTOR.md](REFACTOR.md) を参照
+
+---
+
 ## 📊 バージョン履歴
 
-### v3.3.0 (現在)
+### v3.3.1 (2025-11-05) - リファクタリング完了
+- ✅ Phase 1-4 リファクタリング実施
+- ✅ コード品質大幅向上（-190行の効率化）
+- ✅ バグ修正と堅牢性強化
+- ✅ ドキュメント整備
+
+### v3.3.0
 - ✅ 設定モーダル実装（次元数・グリッドサイズ変更）
 - ✅ UIManager/SettingsModal分離
 - ✅ Phase 6リファクタリング: コード重複削除、命名統一

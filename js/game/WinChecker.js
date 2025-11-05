@@ -3,6 +3,8 @@
  * Supports 2D, 3D, 4D, 5D, 6D+
  */
 
+import { BoardAccessor } from '../utils/BoardAccessor.js';
+
 export class WinChecker {
     /**
      * Create a win checker
@@ -113,24 +115,14 @@ export class WinChecker {
     /**
      * Get marker at N-dimensional coordinates
      * Supports both nested arrays and Map-based storage
+     * Delegates to BoardAccessor utility for consistency
      * @param {Array|Map} board - Game board
      * @param {Array<number>} coords - Coordinates
      * @returns {string|null} Player marker or null
      */
     getMarkerAt(board, coords) {
-        // If board is a Map (for high dimensions)
-        if (board instanceof Map) {
-            return board.get(coords.join(',')) || null;
-        }
-
-        // If board is nested arrays (for 2D-4D)
-        let current = board;
-        // Access in reverse order: board[w][z][y][x] for 4D
-        for (let i = coords.length - 1; i >= 0; i--) {
-            current = current[coords[i]];
-            if (current === undefined) return null;
-        }
-        return current;
+        // Use BoardAccessor utility for consistent board access
+        return BoardAccessor.getMarkerAt(board, coords);
     }
 
     /**

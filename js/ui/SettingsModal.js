@@ -51,6 +51,11 @@ export class SettingsModal {
                 const newDimensions = parseInt(this.dimensionSelect.value);
                 const newGridSize = parseInt(this.gridsizeSelect.value);
 
+                // Validate settings before applying
+                if (!this.validateSettings(newDimensions, newGridSize)) {
+                    return;
+                }
+
                 this.hide();
                 this.onApply(newDimensions, newGridSize);
             });
@@ -104,6 +109,44 @@ export class SettingsModal {
         if (this.modal) {
             this.modal.classList.remove('show');
         }
+    }
+
+    /**
+     * Validate settings before applying
+     * @param {number} dimensions - Number of dimensions
+     * @param {number} gridSize - Grid size
+     * @returns {boolean} True if valid
+     */
+    validateSettings(dimensions, gridSize) {
+        // Validate dimensions
+        if (!Number.isInteger(dimensions) || dimensions < CONFIG.MIN_DIMENSIONS || dimensions > CONFIG.MAX_DIMENSIONS) {
+            alert(`次元数は${CONFIG.MIN_DIMENSIONS}から${CONFIG.MAX_DIMENSIONS}の整数である必要があります`);
+            console.error('SettingsModal: Invalid dimensions', dimensions);
+            return false;
+        }
+
+        // Validate grid size
+        if (!Number.isInteger(gridSize) || gridSize < CONFIG.MIN_GRID_SIZE || gridSize > CONFIG.MAX_GRID_SIZE) {
+            alert(`グリッドサイズは${CONFIG.MIN_GRID_SIZE}から${CONFIG.MAX_GRID_SIZE}の整数である必要があります`);
+            console.error('SettingsModal: Invalid grid size', gridSize);
+            return false;
+        }
+
+        // Check total cell count (performance consideration)
+        const totalCells = Math.pow(gridSize, dimensions);
+
+        if (totalCells > CONFIG.MAX_CELLS_WARNING_THRESHOLD) {
+            const proceed = confirm(
+                `警告: セル数が${totalCells}個になります。\n` +
+                `パフォーマンスに影響する可能性があります。\n` +
+                `続行しますか？`
+            );
+            if (!proceed) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
