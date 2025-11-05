@@ -3,11 +3,13 @@
  * Integrates all components and manages game flow
  */
 
-import { CONFIG, VERSION } from './config.js';
+import { CONFIG } from './config.js';
 import { GameBoard } from './game.js';
 import { GridRenderer } from './renderer.js';
 import { InputController } from './input.js';
 import { generateRotationPlanes, getRotationPlaneName } from './mathnd.js';
+import { SettingsModal } from './ui/SettingsModal.js';
+import { UIManager } from './ui/UIManager.js';
 
 class Game {
     constructor() {
@@ -17,6 +19,12 @@ class Game {
         this.gameBoard = new GameBoard();
         this.inputController = new InputController(this.renderer.getCanvas());
 
+        // UI managers
+        this.uiManager = new UIManager();
+        this.settingsModal = new SettingsModal((dims, gridSize) => {
+            this.reinitializeGame(dims, gridSize);
+        });
+
         // Game state
         this.autoRotate = true;
         this.rotationSpeed = CONFIG.ROTATION_SPEED;
@@ -25,7 +33,6 @@ class Game {
 
         this.setupEventListeners();
         this.updateStatus();
-        this.updateVersion();
         this.inputController.updateAutoRotateButton(this.autoRotate); // Set initial button state
         this.animate();
     }
@@ -63,11 +70,8 @@ class Game {
 
         // Reset game - show settings modal
         this.inputController.addEventListener('reset', () => {
-            this.showSettingsModal();
+            this.settingsModal.show(this.dimensions, CONFIG.GRID_SIZE);
         });
-
-        // Setup modal event listeners
-        this.setupModalListeners();
 
         // Toggle auto-rotate
         this.inputController.addEventListener('toggleAutoRotate', () => {
@@ -140,128 +144,6 @@ class Game {
     }
 
     /**
-     * Show settings modal
-     */
-    showSettingsModal() {
-        const modal = document.getElementById('settings-modal');
-        if (!modal) return;
-
-        // Set current values
-        const dimensionSelect = document.getElementById('dimension-select');
-        const gridsizeSelect = document.getElementById('gridsize-select');
-
-        if (dimensionSelect) {
-            dimensionSelect.value = this.dimensions.toString();
-        }
-        if (gridsizeSelect) {
-            gridsizeSelect.value = CONFIG.GRID_SIZE.toString();
-        }
-
-        // Update info displays
-        this.updateDimensionInfo();
-        this.updateGridSizeInfo();
-
-        // Show modal
-        modal.classList.add('show');
-    }
-
-    /**
-     * Hide settings modal
-     */
-    hideSettingsModal() {
-        const modal = document.getElementById('settings-modal');
-        if (modal) {
-            modal.classList.remove('show');
-        }
-    }
-
-    /**
-     * Setup modal event listeners
-     */
-    setupModalListeners() {
-        const modal = document.getElementById('settings-modal');
-        const dimensionSelect = document.getElementById('dimension-select');
-        const gridsizeSelect = document.getElementById('gridsize-select');
-        const applyBtn = document.getElementById('apply-settings-btn');
-        const cancelBtn = document.getElementById('cancel-settings-btn');
-
-        // Update info when dimension changes
-        if (dimensionSelect) {
-            dimensionSelect.addEventListener('change', () => {
-                this.updateDimensionInfo();
-                this.updateGridSizeInfo(); // Cell count depends on both
-            });
-        }
-
-        // Update info when grid size changes
-        if (gridsizeSelect) {
-            gridsizeSelect.addEventListener('change', () => {
-                this.updateGridSizeInfo();
-            });
-        }
-
-        // Apply settings and restart game
-        if (applyBtn) {
-            applyBtn.addEventListener('click', () => {
-                const newDimensions = parseInt(dimensionSelect.value);
-                const newGridSize = parseInt(gridsizeSelect.value);
-
-                this.hideSettingsModal();
-                this.reinitializeGame(newDimensions, newGridSize);
-            });
-        }
-
-        // Cancel - just close modal
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                this.hideSettingsModal();
-            });
-        }
-
-        // Close modal when clicking outside
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.hideSettingsModal();
-                }
-            });
-        }
-    }
-
-    /**
-     * Update dimension info display
-     */
-    updateDimensionInfo() {
-        const dimensionSelect = document.getElementById('dimension-select');
-        const dimensionInfo = document.getElementById('dimension-info');
-
-        if (!dimensionSelect || !dimensionInfo) return;
-
-        const dims = parseInt(dimensionSelect.value);
-        const rotationPlanes = generateRotationPlanes(dims);
-        const planeCount = rotationPlanes.length;
-
-        dimensionInfo.textContent = `回転平面: ${planeCount}個`;
-    }
-
-    /**
-     * Update grid size info display
-     */
-    updateGridSizeInfo() {
-        const dimensionSelect = document.getElementById('dimension-select');
-        const gridsizeSelect = document.getElementById('gridsize-select');
-        const cellsInfo = document.getElementById('cells-info');
-
-        if (!dimensionSelect || !gridsizeSelect || !cellsInfo) return;
-
-        const dims = parseInt(dimensionSelect.value);
-        const gridSize = parseInt(gridsizeSelect.value);
-        const totalCells = Math.pow(gridSize, dims);
-
-        cellsInfo.textContent = `セル数: ${totalCells}個`;
-    }
-
-    /**
      * Reinitialize game with new settings
      * @param {number} newDimensions - New dimension count
      * @param {number} newGridSize - New grid size
@@ -282,6 +164,8 @@ class Game {
         this.renderer = new GridRenderer(container);
         this.gameBoard = new GameBoard();
         this.inputController = new InputController(this.renderer.getCanvas());
+
+        // UI managers are persistent (no need to recreate)
 
         // Reset game state
         this.autoRotate = true;
@@ -308,53 +192,8 @@ class Game {
      * @param {boolean} isVictory - Whether this is a victory message
      */
     updateStatus(message = null, isVictory = false) {
-        const statusElement = document.getElementById('status');
-        const markerElement = document.getElementById('player-marker');
-        const textElement = document.getElementById('status-text');
-
-        if (!statusElement || !markerElement || !textElement) return;
-
         const currentPlayer = this.gameBoard.getCurrentPlayer();
-
-        // Update player marker color
-        markerElement.className = currentPlayer === 'X' ? 'player-x' : 'player-o';
-
-        // Update status border color to match current player (including victory)
-        statusElement.classList.remove('player-x-turn', 'player-o-turn');
-        if (message !== '引き分け！') {
-            statusElement.classList.add(currentPlayer === 'X' ? 'player-x-turn' : 'player-o-turn');
-        }
-
-        if (isVictory) {
-            // Victory display
-            statusElement.classList.add('victory');
-            textElement.textContent = ' の勝利！🎉';
-        } else if (message === '引き分け！') {
-            // Draw display
-            statusElement.classList.remove('victory');
-            markerElement.style.display = 'none';
-            textElement.textContent = '引き分け！';
-        } else if (message && message.includes('もう一度クリックで確定')) {
-            // Preview confirmation message
-            statusElement.classList.remove('victory');
-            markerElement.style.display = 'inline-block';
-            textElement.textContent = ' もう一度クリックで確定';
-        } else {
-            // Normal turn display
-            statusElement.classList.remove('victory');
-            markerElement.style.display = 'inline-block';
-            textElement.textContent = ' の番です';
-        }
-    }
-
-    /**
-     * Update version display
-     */
-    updateVersion() {
-        const versionElement = document.getElementById('version');
-        if (versionElement) {
-            versionElement.textContent = `v${VERSION}`;
-        }
+        this.uiManager.updateStatus(currentPlayer, message, isVictory);
     }
 
     /**
