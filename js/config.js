@@ -2,10 +2,11 @@
  * Configuration constants for 4D Tic-Tac-Toe
  */
 
-export const VERSION = '2.6.0';
+export const VERSION = '3.0.0';
 
 export const CONFIG = {
     // Game settings
+    DIMENSIONS: 4,    // Number of dimensions (2-6 supported, tested with 2-4)
     GRID_SIZE: 4,
     CELL_SPACING: 1.2,
     CELL_SIZE: 0.4,

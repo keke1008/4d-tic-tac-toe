@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from '../config.js';
-import { rotate4D, project4Dto3D } from '../math4d.js';
+import { rotate4D, project4Dto3D } from '../mathnd.js';
 
 export class ConnectionManager {
     /**

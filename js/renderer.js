@@ -3,7 +3,7 @@
  */
 
 import { CONFIG, FOUR_D_AXES } from './config.js';
-import { rotate4D, project4Dto3D, getScaleFromW } from './math4d.js';
+import { rotate4D, project4Dto3D, getScaleFromW } from './mathnd.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
 import { MarkerRenderer } from './rendering/MarkerRenderer.js';
