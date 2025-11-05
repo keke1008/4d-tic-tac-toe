@@ -119,24 +119,23 @@ export class SettingsModal {
      */
     validateSettings(dimensions, gridSize) {
         // Validate dimensions
-        if (!Number.isInteger(dimensions) || dimensions < 2 || dimensions > 8) {
-            alert('次元数は2から8の整数である必要があります');
+        if (!Number.isInteger(dimensions) || dimensions < CONFIG.MIN_DIMENSIONS || dimensions > CONFIG.MAX_DIMENSIONS) {
+            alert(`次元数は${CONFIG.MIN_DIMENSIONS}から${CONFIG.MAX_DIMENSIONS}の整数である必要があります`);
             console.error('SettingsModal: Invalid dimensions', dimensions);
             return false;
         }
 
         // Validate grid size
-        if (!Number.isInteger(gridSize) || gridSize < 2 || gridSize > 6) {
-            alert('グリッドサイズは2から6の整数である必要があります');
+        if (!Number.isInteger(gridSize) || gridSize < CONFIG.MIN_GRID_SIZE || gridSize > CONFIG.MAX_GRID_SIZE) {
+            alert(`グリッドサイズは${CONFIG.MIN_GRID_SIZE}から${CONFIG.MAX_GRID_SIZE}の整数である必要があります`);
             console.error('SettingsModal: Invalid grid size', gridSize);
             return false;
         }
 
         // Check total cell count (performance consideration)
         const totalCells = Math.pow(gridSize, dimensions);
-        const maxCells = 10000; // Arbitrary limit for performance
 
-        if (totalCells > maxCells) {
+        if (totalCells > CONFIG.MAX_CELLS_WARNING_THRESHOLD) {
             const proceed = confirm(
                 `警告: セル数が${totalCells}個になります。\n` +
                 `パフォーマンスに影響する可能性があります。\n` +

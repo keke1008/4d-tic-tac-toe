@@ -5,6 +5,7 @@
 
 import { CONFIG } from './config.js';
 import { WinChecker } from './game/WinChecker.js';
+import { BoardAccessor } from './utils/BoardAccessor.js';
 
 export class GameBoard {
     constructor() {
@@ -58,32 +59,31 @@ export class GameBoard {
      * @returns {boolean} True if coordinates are valid
      */
     isValidCoordinate(coords) {
-        // Check if coords is an array
-        if (!Array.isArray(coords)) {
-            console.warn('GameBoard: Coordinates must be an array');
-            return false;
-        }
+        const isValid = BoardAccessor.isValidCoordinate(coords, this.dimensions, this.gridSize);
 
-        // Check dimension count
-        if (coords.length !== this.dimensions) {
-            console.warn(`GameBoard: Expected ${this.dimensions} coordinates, got ${coords.length}`);
-            return false;
-        }
-
-        // Check each coordinate is within bounds
-        for (let i = 0; i < coords.length; i++) {
-            const coord = coords[i];
-            if (typeof coord !== 'number' || !Number.isInteger(coord)) {
-                console.warn(`GameBoard: Coordinate at index ${i} must be an integer, got ${coord}`);
-                return false;
+        if (!isValid) {
+            // Provide detailed error messages for debugging
+            if (!Array.isArray(coords)) {
+                console.warn('GameBoard: Coordinates must be an array');
+            } else if (coords.length !== this.dimensions) {
+                console.warn(`GameBoard: Expected ${this.dimensions} coordinates, got ${coords.length}`);
+            } else {
+                // Check each coordinate for specific error
+                for (let i = 0; i < coords.length; i++) {
+                    const coord = coords[i];
+                    if (typeof coord !== 'number' || !Number.isInteger(coord)) {
+                        console.warn(`GameBoard: Coordinate at index ${i} must be an integer, got ${coord}`);
+                        break;
+                    }
+                    if (coord < 0 || coord >= this.gridSize) {
+                        console.warn(`GameBoard: Coordinate ${coord} at index ${i} is out of bounds [0, ${this.gridSize - 1}]`);
+                        break;
+                    }
+                }
             }
-            if (coord < 0 || coord >= this.gridSize) {
-                console.warn(`GameBoard: Coordinate ${coord} at index ${i} is out of bounds [0, ${this.gridSize - 1}]`);
-                return false;
-            }
         }
 
-        return true;
+        return isValid;
     }
 
     /**
@@ -134,20 +134,10 @@ export class GameBoard {
             return;
         }
 
-        if (this.board instanceof Map) {
-            // Map-based storage
-            this.board.set(coords.join(','), player);
-        } else {
-            // Nested array storage (reverse order: board[w][z][y][x] for 4D)
-            let current = this.board;
-            for (let i = coords.length - 1; i > 0; i--) {
-                current = current[coords[i]];
-                if (!current) {
-                    console.error('GameBoard.setMarkerAt: Invalid nested array access', coords);
-                    return;
-                }
-            }
-            current[coords[0]] = player;
+        // Use BoardAccessor utility for consistent board access
+        const success = BoardAccessor.setMarkerAt(this.board, coords, player);
+        if (!success) {
+            console.error('GameBoard.setMarkerAt: Failed to set marker', coords, player);
         }
     }
 
@@ -164,17 +154,8 @@ export class GameBoard {
             return null;
         }
 
-        if (this.board instanceof Map) {
-            return this.board.get(coords.join(',')) || null;
-        }
-
-        // Nested array access (reverse order)
-        let current = this.board;
-        for (let i = coords.length - 1; i >= 0; i--) {
-            current = current[coords[i]];
-            if (current === undefined) return null;
-        }
-        return current;
+        // Use BoardAccessor utility for consistent board access
+        return BoardAccessor.getMarkerAt(this.board, coords);
     }
 
     /**

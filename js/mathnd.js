@@ -107,7 +107,7 @@ function projectOneDimensionDown(point, projectionDistance) {
     const denominator = projectionDistance - lastDim;
 
     // Prevent division by zero
-    if (Math.abs(denominator) < 0.0001) {
+    if (Math.abs(denominator) < CONFIG.PROJECTION_EPSILON) {
         console.warn('mathnd.projectOneDimensionDown: Near-zero denominator, using fallback projection');
         // Use orthographic projection as fallback
         const result = [];

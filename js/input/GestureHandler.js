@@ -104,13 +104,13 @@ export class GestureHandler extends EventTarget {
             // Emit rotation events for both axes independently (supports diagonal drag)
             if (absDeltaX > CONFIG.SWIPE_THRESHOLD) {
                 this.dispatchEvent(new CustomEvent('rotateHorizontal', {
-                    detail: { delta: e.velocityX * CONFIG.ROTATION_SENSITIVITY * 10 }
+                    detail: { delta: e.velocityX * CONFIG.ROTATION_SENSITIVITY * CONFIG.SWIPE_ROTATION_MULTIPLIER }
                 }));
             }
 
             if (absDeltaY > CONFIG.SWIPE_THRESHOLD) {
                 this.dispatchEvent(new CustomEvent('rotateVertical', {
-                    detail: { delta: -e.velocityY * CONFIG.ROTATION_SENSITIVITY * 10 }
+                    detail: { delta: -e.velocityY * CONFIG.ROTATION_SENSITIVITY * CONFIG.SWIPE_ROTATION_MULTIPLIER }
                 }));
             }
         });
@@ -133,8 +133,8 @@ export class GestureHandler extends EventTarget {
 
             this.dispatchEvent(new CustomEvent('cameraPan', {
                 detail: {
-                    deltaX: -incrementalDeltaX * 0.01,
-                    deltaY: incrementalDeltaY * 0.01
+                    deltaX: -incrementalDeltaX * CONFIG.CAMERA_PAN_SENSITIVITY,
+                    deltaY: incrementalDeltaY * CONFIG.CAMERA_PAN_SENSITIVITY
                 }
             }));
         });
@@ -156,7 +156,7 @@ export class GestureHandler extends EventTarget {
 
             // Apply zoom with appropriate sensitivity
             this.dispatchEvent(new CustomEvent('cameraPinch', {
-                detail: { delta: scaleDelta * 5 }  // Increased multiplier for better responsiveness
+                detail: { delta: scaleDelta * CONFIG.PINCH_ZOOM_MULTIPLIER }
             }));
         });
 

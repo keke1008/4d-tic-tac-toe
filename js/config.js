@@ -11,17 +11,30 @@ export const CONFIG = {
     CELL_SPACING: 1.2,
     CELL_SIZE: 0.4,
 
+    // Validation limits
+    MIN_DIMENSIONS: 2,
+    MAX_DIMENSIONS: 8,
+    MIN_GRID_SIZE: 2,
+    MAX_GRID_SIZE: 6,
+    MAX_CELLS_WARNING_THRESHOLD: 10000,  // Warn user if total cells exceed this
+
     // Rotation settings
     ROTATION_SPEED: 0.005,
     ROTATION_SENSITIVITY: 0.01,
     SWIPE_THRESHOLD: 5, // pixels
+    SWIPE_ROTATION_MULTIPLIER: 10,  // Multiplier for swipe velocity to rotation delta
 
     // Projection settings
     PROJECTION_DISTANCE_4D: 3,
+    PROJECTION_EPSILON: 0.0001,         // Threshold for division-by-zero prevention
     CAMERA_DISTANCE: 12,
     CAMERA_FOV: 60,
     CAMERA_DISTANCE_MIN: 8,
     CAMERA_DISTANCE_MAX: 20,
+
+    // Camera control sensitivity
+    CAMERA_PAN_SENSITIVITY: 0.01,       // Sensitivity for camera panning
+    PINCH_ZOOM_MULTIPLIER: 5,           // Multiplier for pinch zoom gesture
 
     // Visual settings - Unified colors for unselected, player colors for selected
     CELL_SCALE_MIN: 0.7,
