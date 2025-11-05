@@ -1,5 +1,6 @@
 /**
- * Game logic for 4D Tic-Tac-Toe
+ * Game logic for N-dimensional Tic-Tac-Toe
+ * Supports 2D, 3D, 4D, 5D, 6D+
  */
 
 import { CONFIG } from './config.js';
@@ -7,79 +8,152 @@ import { WinChecker } from './game/WinChecker.js';
 
 export class GameBoard {
     constructor() {
+        this.dimensions = CONFIG.DIMENSIONS || 4;
         this.gridSize = CONFIG.GRID_SIZE;
         this.board = this.createEmptyBoard();
         this.currentPlayer = 'X';
         this.gameOver = false;
         this.winner = null;
 
-        // Initialize win checker
-        this.winChecker = new WinChecker(this.gridSize);
+        // Initialize win checker with dimensions
+        this.winChecker = new WinChecker(this.dimensions, this.gridSize);
     }
 
     /**
-     * Create an empty 4D board
-     * @returns {Array} 4D array of null values
+     * Create an empty N-dimensional board
+     * For 2D-4D: Uses nested arrays
+     * For 5D+: Uses Map for better memory efficiency
+     * @returns {Array|Map} Empty board
      */
     createEmptyBoard() {
-        const board = [];
-        for (let w = 0; w < this.gridSize; w++) {
-            board[w] = [];
-            for (let z = 0; z < this.gridSize; z++) {
-                board[w][z] = [];
-                for (let y = 0; y < this.gridSize; y++) {
-                    board[w][z][y] = new Array(this.gridSize).fill(null);
-                }
-            }
+        // For high dimensions (5D+), use Map for better performance
+        if (this.dimensions >= 5) {
+            return new Map();
         }
-        return board;
+
+        // For 2D-4D, use nested arrays (backward compatible)
+        return this.createNestedArray(this.dimensions);
     }
 
     /**
-     * Place a mark at the specified coordinates
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} w
-     * @returns {boolean} True if placement was successful
+     * Recursively create nested array for N dimensions
+     * @param {number} remainingDims - Remaining dimensions to create
+     * @returns {Array} Nested array
      */
-    placeMarker(x, y, z, w) {
-        if (this.gameOver) return false;
-        if (this.board[w][z][y][x]) return false;
+    createNestedArray(remainingDims) {
+        if (remainingDims === 1) {
+            return new Array(this.gridSize).fill(null);
+        }
 
-        this.board[w][z][y][x] = this.currentPlayer;
+        const arr = [];
+        for (let i = 0; i < this.gridSize; i++) {
+            arr.push(this.createNestedArray(remainingDims - 1));
+        }
+        return arr;
+    }
+
+    /**
+     * Place a marker at the specified coordinates
+     * @param {...number|Array<number>} args - Either individual coords or array
+     * @returns {boolean} True if placement was successful
+     *
+     * Examples:
+     * - 2D: placeMarker(x, y) or placeMarker([x, y])
+     * - 3D: placeMarker(x, y, z) or placeMarker([x, y, z])
+     * - 4D: placeMarker(x, y, z, w) or placeMarker([x, y, z, w])
+     */
+    placeMarker(...args) {
+        const coords = Array.isArray(args[0]) ? args[0] : args;
+
+        if (this.gameOver) return false;
+        if (this.getMarker(...coords)) return false;
+
+        this.setMarkerAt(coords, this.currentPlayer);
         return true;
     }
 
     /**
      * Check if the current player has won
      * Delegates to WinChecker
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} w
+     * @param {...number|Array<number>} args - Either individual coords or array
      * @returns {boolean} True if current player won
      */
-    checkWin(x, y, z, w) {
-        return this.winChecker.checkWin(x, y, z, w, this.currentPlayer, this.board);
+    checkWin(...args) {
+        const coords = Array.isArray(args[0]) ? args[0] : args;
+        return this.winChecker.checkWin(coords, this.currentPlayer, this.board);
     }
 
+    /**
+     * Set marker at coordinates
+     * @param {Array<number>} coords - Coordinates
+     * @param {string} player - Player marker
+     */
+    setMarkerAt(coords, player) {
+        if (this.board instanceof Map) {
+            // Map-based storage
+            this.board.set(coords.join(','), player);
+        } else {
+            // Nested array storage (reverse order: board[w][z][y][x] for 4D)
+            let current = this.board;
+            for (let i = coords.length - 1; i > 0; i--) {
+                current = current[coords[i]];
+            }
+            current[coords[0]] = player;
+        }
+    }
+
+    /**
+     * Get marker at coordinates
+     * @param {...number|Array<number>} args - Either individual coords or array
+     * @returns {string|null} Player marker or null
+     */
+    getMarker(...args) {
+        const coords = Array.isArray(args[0]) ? args[0] : args;
+
+        if (this.board instanceof Map) {
+            return this.board.get(coords.join(',')) || null;
+        }
+
+        // Nested array access (reverse order)
+        let current = this.board;
+        for (let i = coords.length - 1; i >= 0; i--) {
+            current = current[coords[i]];
+            if (current === undefined) return null;
+        }
+        return current;
+    }
 
     /**
      * Check if the board is full
      * @returns {boolean}
      */
     isBoardFull() {
-        for (let w = 0; w < this.gridSize; w++) {
-            for (let z = 0; z < this.gridSize; z++) {
-                for (let y = 0; y < this.gridSize; y++) {
-                    for (let x = 0; x < this.gridSize; x++) {
-                        if (!this.board[w][z][y][x]) return false;
-                    }
-                }
-            }
+        const totalCells = Math.pow(this.gridSize, this.dimensions);
+
+        if (this.board instanceof Map) {
+            return this.board.size === totalCells;
         }
-        return true;
+
+        // Check nested array
+        return this.countFilledCells() === totalCells;
+    }
+
+    /**
+     * Count filled cells in nested array
+     * @param {Array} arr - Current array level
+     * @param {number} depth - Current depth
+     * @returns {number} Number of filled cells
+     */
+    countFilledCells(arr = this.board, depth = this.dimensions) {
+        if (depth === 1) {
+            return arr.filter(cell => cell !== null).length;
+        }
+
+        let count = 0;
+        for (const subArray of arr) {
+            count += this.countFilledCells(subArray, depth - 1);
+        }
+        return count;
     }
 
     /**
@@ -95,18 +169,6 @@ export class GameBoard {
      */
     getCurrentPlayer() {
         return this.currentPlayer;
-    }
-
-    /**
-     * Get marker at coordinates
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} w
-     * @returns {string|null}
-     */
-    getMarker(x, y, z, w) {
-        return this.board[w][z][y][x];
     }
 
     /**
@@ -142,5 +204,13 @@ export class GameBoard {
      */
     getWinner() {
         return this.winner;
+    }
+
+    /**
+     * Get dimensions
+     * @returns {number}
+     */
+    getDimensions() {
+        return this.dimensions;
     }
 }
