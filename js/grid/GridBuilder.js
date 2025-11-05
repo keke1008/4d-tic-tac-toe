@@ -66,7 +66,6 @@ export class GridBuilder {
 
         return {
             posND: posND,           // N-dimensional position
-            pos4d: posND,           // Alias for backward compatibility
             coords: coordsObj,      // Named coordinates
             coordsArray: coords,    // Array form for easy iteration
             group: null,            // Will be set by renderer
@@ -95,7 +94,7 @@ export class GridBuilder {
 
     /**
      * Generate all connection line endpoints
-     * @returns {Array} Array of {pos4d1, pos4d2} connection line endpoints
+     * @returns {Array} Array of {posND1, posND2} connection line endpoints
      *
      * Connection counts:
      * - 2D: 2 * gridSize * (gridSize-1) connections
@@ -129,10 +128,8 @@ export class GridBuilder {
                     const pos2 = this.coordsToPosition(neighborCoords);
 
                     connections.push({
-                        pos4d1: pos1,    // Backward compatibility
-                        pos4d2: pos2,    // Backward compatibility
-                        posND1: pos1,    // New name
-                        posND2: pos2,    // New name
+                        posND1: pos1,
+                        posND2: pos2,
                         coords1: currentCoords,
                         coords2: neighborCoords,
                         dimension: dim

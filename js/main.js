@@ -7,7 +7,7 @@ import { CONFIG } from './config.js';
 import { GameBoard } from './game.js';
 import { GridRenderer } from './renderer.js';
 import { InputController } from './input.js';
-import { generateRotationPlanes, getRotationPlaneName } from './mathnd.js';
+import { RotationInitializer } from './game/RotationInitializer.js';
 import { SettingsModal } from './ui/SettingsModal.js';
 import { UIManager } from './ui/UIManager.js';
 
@@ -29,28 +29,12 @@ class Game {
         this.autoRotate = true;
         this.rotationSpeed = CONFIG.ROTATION_SPEED;
         this.dimensions = CONFIG.DIMENSIONS || 4;
-        this.rotations = this.initializeRotations();
+        this.rotations = RotationInitializer.createRotations(this.dimensions);
 
         this.setupEventListeners();
         this.updateStatus();
         this.inputController.updateAutoRotateButton(this.autoRotate); // Set initial button state
         this.animate();
-    }
-
-    /**
-     * Initialize rotation angles for all rotation planes
-     * @returns {Object} Rotation object with all planes set to 0
-     */
-    initializeRotations() {
-        const rotations = {};
-        const planes = generateRotationPlanes(this.dimensions);
-
-        for (const [axis1, axis2] of planes) {
-            const planeName = getRotationPlaneName(axis1, axis2);
-            rotations[planeName] = 0;
-        }
-
-        return rotations;
     }
 
     /**
@@ -170,7 +154,7 @@ class Game {
         // Reset game state
         this.autoRotate = true;
         this.rotationSpeed = CONFIG.ROTATION_SPEED;
-        this.rotations = this.initializeRotations();
+        this.rotations = RotationInitializer.createRotations(this.dimensions);
 
         // Reattach event listeners
         this.setupEventListeners();
