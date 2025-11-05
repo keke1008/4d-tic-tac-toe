@@ -18,11 +18,11 @@ export class ConnectionManager {
 
     /**
      * Create a single connection line
-     * @param {Array} pos4d1 - Start position [x, y, z, w]
-     * @param {Array} pos4d2 - End position [x, y, z, w]
+     * @param {Array} posND1 - Start position N-dimensional
+     * @param {Array} posND2 - End position N-dimensional
      * @returns {THREE.Line} Created line object
      */
-    createLine(pos4d1, pos4d2) {
+    createLine(posND1, posND2) {
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(6); // 2 points * 3 coordinates
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -37,7 +37,7 @@ export class ConnectionManager {
         });
 
         const line = new THREE.Line(geometry, material);
-        line.userData = { pos4d1, pos4d2 };
+        line.userData = { posND1, posND2 };
         line.renderOrder = 999;  // Render after most objects
 
         this.scene.add(line);
@@ -48,11 +48,11 @@ export class ConnectionManager {
 
     /**
      * Create all connection lines from connection data
-     * @param {Array} connections - Array of {pos4d1, pos4d2} objects
+     * @param {Array} connections - Array of {posND1, posND2} objects
      */
     createAllLines(connections) {
         connections.forEach(conn => {
-            this.createLine(conn.pos4d1, conn.pos4d2);
+            this.createLine(conn.posND1, conn.posND2);
         });
     }
 
@@ -67,20 +67,20 @@ export class ConnectionManager {
         // Build map of cell positions to cell objects for fast lookup
         const cellMap = new Map();
         cells.forEach(cell => {
-            const key = cell.pos4d.join(',');
+            const key = cell.posND.join(',');
             cellMap.set(key, cell);
         });
 
         // Get position keys for hover and preview cells
-        const hoveredKey = hoveredCell ? hoveredCell.pos4d.join(',') : null;
-        const previewKey = previewCell ? previewCell.pos4d.join(',') : null;
+        const hoveredKey = hoveredCell ? hoveredCell.posND.join(',') : null;
+        const previewKey = previewCell ? previewCell.posND.join(',') : null;
 
         this.connectionLines.forEach(line => {
-            const { pos4d1, pos4d2 } = line.userData;
+            const { posND1, posND2 } = line.userData;
 
             // Get cells at both endpoints
-            const key1 = pos4d1.join(',');
-            const key2 = pos4d2.join(',');
+            const key1 = posND1.join(',');
+            const key2 = posND2.join(',');
             const cell1 = cellMap.get(key1);
             const cell2 = cellMap.get(key2);
 
@@ -93,8 +93,8 @@ export class ConnectionManager {
             const isPreview = isPreview1 || isPreview2;
 
             // Rotate and project endpoints
-            const rotated1 = rotate4D(pos4d1, rotations);
-            const rotated2 = rotate4D(pos4d2, rotations);
+            const rotated1 = rotate4D(posND1, rotations);
+            const rotated2 = rotate4D(posND2, rotations);
             const [x1, y1, z1] = project4Dto3D(rotated1);
             const [x2, y2, z2] = project4Dto3D(rotated2);
 
