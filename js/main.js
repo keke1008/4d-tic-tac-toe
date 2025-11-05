@@ -7,6 +7,7 @@ import { CONFIG, VERSION } from './config.js';
 import { GameBoard } from './game.js';
 import { GridRenderer } from './renderer.js';
 import { InputController } from './input.js';
+import { generateRotationPlanes, getRotationPlaneName } from './mathnd.js';
 
 class Game {
     constructor() {
@@ -19,13 +20,30 @@ class Game {
         // Game state
         this.autoRotate = true;
         this.rotationSpeed = CONFIG.ROTATION_SPEED;
-        this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
+        this.dimensions = CONFIG.DIMENSIONS || 4;
+        this.rotations = this.initializeRotations();
 
         this.setupEventListeners();
         this.updateStatus();
         this.updateVersion();
         this.inputController.updateAutoRotateButton(this.autoRotate); // Set initial button state
         this.animate();
+    }
+
+    /**
+     * Initialize rotation angles for all rotation planes
+     * @returns {Object} Rotation object with all planes set to 0
+     */
+    initializeRotations() {
+        const rotations = {};
+        const planes = generateRotationPlanes(this.dimensions);
+
+        for (const [axis1, axis2] of planes) {
+            const planeName = getRotationPlaneName(axis1, axis2);
+            rotations[planeName] = 0;
+        }
+
+        return rotations;
     }
 
     /**

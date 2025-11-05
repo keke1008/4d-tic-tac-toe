@@ -3,7 +3,7 @@
  */
 
 import { CONFIG, FOUR_D_AXES } from './config.js';
-import { rotate4D, project4Dto3D, getScaleFromW } from './mathnd.js';
+import { rotate4D, project4Dto3D, getScaleFromW, generateRotationPlanes, getRotationPlaneName } from './mathnd.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
 import { MarkerRenderer } from './rendering/MarkerRenderer.js';
@@ -16,7 +16,10 @@ export class GridRenderer {
         this.container = container;
         this.cells = [];
         this.cellMeshes = [];
-        this.rotations = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 };
+
+        // Initialize rotations dynamically based on dimensions
+        this.dimensions = CONFIG.DIMENSIONS || 4;
+        this.rotations = this.initializeRotations();
 
         // Hover and preview state
         this.hoveredCell = null;
@@ -30,6 +33,22 @@ export class GridRenderer {
         this.createGrid();
         this.createGridConnections();
         this.setupHoverDetection();
+    }
+
+    /**
+     * Initialize rotation angles for all rotation planes
+     * @returns {Object} Rotation object with all planes set to 0
+     */
+    initializeRotations() {
+        const rotations = {};
+        const planes = generateRotationPlanes(this.dimensions);
+
+        for (const [axis1, axis2] of planes) {
+            const planeName = getRotationPlaneName(axis1, axis2);
+            rotations[planeName] = 0;
+        }
+
+        return rotations;
     }
 
     /**
