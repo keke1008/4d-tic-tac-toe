@@ -110,9 +110,9 @@ class Game {
             }
         });
 
-        this.eventBus.on('game:reset', () => {
-            this.reinitializeGame();
-        });
+        // Note: game:reset event listener removed to prevent infinite recursion
+        // reinitializeGame() is called directly from handleSettingsChange()
+        // The game:reset event from GameService.resetGame() should not trigger reinitializeGame() again
 
         this.eventBus.on('game:redone', () => {
             // Redo event - renderer update handled in handleRedo()
