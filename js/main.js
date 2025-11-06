@@ -32,7 +32,7 @@ class Game {
 
         // === Legacy Components ===
         const container = document.getElementById('canvas-container');
-        this.renderer = new GridRenderer(container);
+        this.renderer = new GridRenderer(container, this.store);
 
         // Input controller with new architecture integration
         this.inputController = new InputController(

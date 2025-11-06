@@ -8,11 +8,15 @@ import { CONFIG } from '../config.js';
 export class GridBuilder {
     /**
      * Create a grid builder
+     * @param {Object} options - Configuration options
+     * @param {number} options.dimensions - Number of dimensions (defaults to CONFIG.DIMENSIONS)
+     * @param {number} options.gridSize - Size of grid (defaults to CONFIG.GRID_SIZE)
+     * @param {number} options.cellSpacing - Spacing between cells (defaults to CONFIG.CELL_SPACING)
      */
-    constructor() {
-        this.dimensions = CONFIG.DIMENSIONS || 4;
-        this.gridSize = CONFIG.GRID_SIZE;
-        this.cellSpacing = CONFIG.CELL_SPACING;
+    constructor(options = {}) {
+        this.dimensions = options.dimensions ?? CONFIG.DIMENSIONS ?? 4;
+        this.gridSize = options.gridSize ?? CONFIG.GRID_SIZE;
+        this.cellSpacing = options.cellSpacing ?? CONFIG.CELL_SPACING;
         this.offset = (this.gridSize - 1) * this.cellSpacing / 2;
     }
 

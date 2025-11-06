@@ -13,8 +13,9 @@ import { GridBuilder } from './grid/GridBuilder.js';
 import { ConnectionManager } from './grid/ConnectionManager.js';
 
 export class GridRenderer {
-    constructor(container) {
+    constructor(container, store = null) {
         this.container = container;
+        this.store = store; // Store reference for state management
         this.cells = [];
         this.cellMeshes = [];
 
@@ -22,8 +23,7 @@ export class GridRenderer {
         this.dimensions = CONFIG.DIMENSIONS || 4;
         this.rotations = RotationInitializer.createRotations(this.dimensions);
 
-        // Hover and preview state
-        this.hoveredCell = null;
+        // Preview state (still kept locally for now, will be migrated in Phase 3)
         this.previewCell = null;
 
         // Initialize renderers and managers
@@ -57,8 +57,16 @@ export class GridRenderer {
      * Create the 4D grid cells
      */
     createGrid() {
+        // Get settings from store if available, otherwise use instance dimensions
+        const dimensions = this.store
+            ? this.store.getState().settings.dimensions
+            : this.dimensions;
+        const gridSize = this.store
+            ? this.store.getState().settings.gridSize
+            : CONFIG.GRID_SIZE;
+
         // Use GridBuilder to generate cell data
-        const gridBuilder = new GridBuilder();
+        const gridBuilder = new GridBuilder({ dimensions, gridSize });
         this.cells = gridBuilder.generateCells();
 
         // Create Three.js meshes for each cell
@@ -82,16 +90,42 @@ export class GridRenderer {
 
             const cell = this.getCellAtMouse(mouseX, mouseY);
 
-            // Update hovered cell
-            if (cell !== this.hoveredCell) {
-                this.hoveredCell = cell;
+            // Update hovered cell in store if store is available
+            if (this.store) {
+                const currentHoveredCell = this.store.getState().visual.hoveredCell;
+                const newHoveredCell = cell ? cell.coordsArray : null;
+
+                // Only dispatch if changed (compare arrays)
+                const hasChanged = !this._areCoordsEqual(currentHoveredCell, newHoveredCell);
+                if (hasChanged) {
+                    this.store.dispatch({
+                        type: 'SET_HOVERED_CELL',
+                        payload: { position: newHoveredCell }
+                    });
+                }
             }
         });
 
         // Clear hover when mouse leaves canvas
         canvas.addEventListener('mouseleave', () => {
-            this.hoveredCell = null;
+            if (this.store) {
+                this.store.dispatch({
+                    type: 'SET_HOVERED_CELL',
+                    payload: { position: null }
+                });
+            }
         });
+    }
+
+    /**
+     * Helper to compare coordinate arrays
+     * @private
+     */
+    _areCoordsEqual(coords1, coords2) {
+        if (coords1 === null && coords2 === null) return true;
+        if (coords1 === null || coords2 === null) return false;
+        if (coords1.length !== coords2.length) return false;
+        return coords1.every((val, i) => val === coords2[i]);
     }
 
     /**
@@ -134,8 +168,16 @@ export class GridRenderer {
      * Create connection lines between cells in all 4 axes
      */
     createGridConnections() {
+        // Get settings from store if available, otherwise use instance dimensions
+        const dimensions = this.store
+            ? this.store.getState().settings.dimensions
+            : this.dimensions;
+        const gridSize = this.store
+            ? this.store.getState().settings.gridSize
+            : CONFIG.GRID_SIZE;
+
         // Use GridBuilder to generate connection data
-        const gridBuilder = new GridBuilder();
+        const gridBuilder = new GridBuilder({ dimensions, gridSize });
         const connections = gridBuilder.generateConnections();
 
         // Use ConnectionManager to create line objects
@@ -147,6 +189,15 @@ export class GridRenderer {
      * Update all cell positions and appearance based on current rotation
      */
     updateCellPositions() {
+        // Get hovered cell from store
+        let hoveredCell = null;
+        if (this.store) {
+            const hoveredCoords = this.store.getState().visual.hoveredCell;
+            if (hoveredCoords) {
+                hoveredCell = this.getCellByCoords(hoveredCoords);
+            }
+        }
+
         this.cells.forEach(cell => {
             const rotated = rotate4D(cell.posND, this.rotations);
             const [x, y, z, w] = project4Dto3D(rotated);
@@ -159,7 +210,7 @@ export class GridRenderer {
             cell.group.scale.setScalar(scale);
 
             // Update appearance (delegates to CellAppearanceManager)
-            const isHovered = cell === this.hoveredCell;
+            const isHovered = cell === hoveredCell;
             const isPreview = cell === this.previewCell;
             this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview);
         });
@@ -170,10 +221,19 @@ export class GridRenderer {
      * Delegates to ConnectionManager
      */
     updateConnectionLines() {
+        // Get hovered cell from store
+        let hoveredCell = null;
+        if (this.store) {
+            const hoveredCoords = this.store.getState().visual.hoveredCell;
+            if (hoveredCoords) {
+                hoveredCell = this.getCellByCoords(hoveredCoords);
+            }
+        }
+
         this.connectionManager.updateLines(
             this.rotations,
             this.cells,
-            this.hoveredCell,
+            hoveredCell,
             this.previewCell
         );
     }
@@ -413,10 +473,8 @@ export class GridRenderer {
         this.cells = [];
         this.cellMeshes = [];
 
-        // Update dimensions
+        // Update dimensions (CONFIG is now read-only, dimensions come from StateStore)
         this.dimensions = dimensions;
-        CONFIG.DIMENSIONS = dimensions;
-        CONFIG.GRID_SIZE = gridSize;
 
         // Reinitialize rotations
         this.rotations = RotationInitializer.createRotations(dimensions);
@@ -425,8 +483,15 @@ export class GridRenderer {
         this.createGrid();
         this.createGridConnections();
 
-        // Reset hover state
-        this.hoveredCell = null;
+        // Reset hover state in store
+        if (this.store) {
+            this.store.dispatch({
+                type: 'SET_HOVERED_CELL',
+                payload: { position: null }
+            });
+        }
+
+        // Reset preview state (still local for now)
         this.previewCell = null;
     }
 }
