@@ -404,12 +404,9 @@ export class GridRenderer {
             }
         });
 
-        // Clear connections
-        if (this.connectionMeshes) {
-            this.connectionMeshes.forEach(mesh => {
-                this.sceneManager.scene.remove(mesh);
-            });
-            this.connectionMeshes = [];
+        // Clear connections using ConnectionManager
+        if (this.connectionManager) {
+            this.connectionManager.clear();
         }
 
         // Clear arrays
