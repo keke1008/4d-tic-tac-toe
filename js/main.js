@@ -8,11 +8,13 @@ import { EventBus } from './infrastructure/events/EventBus.js';
 import { rootReducer, initialState } from './infrastructure/state/reducers.js';
 import { GameService } from './application/services/GameService.js';
 
-// Legacy components (to be refactored in Phase 4)
+// Presentation layer (Phase 4)
+import { UIManager } from './presentation/ui/UIManager.js';
+import { SettingsModal } from './presentation/ui/SettingsModal.js';
+import { InputController } from './presentation/input/InputController.js';
+
+// Legacy components (partial Phase 4)
 import { GridRenderer } from './renderer.js';
-import { InputController } from './input.js';
-import { SettingsModal } from './ui/SettingsModal.js';
-import { UIManager } from './ui/UIManager.js';
 import { RotationInitializer } from './game/RotationInitializer.js';
 
 /**
@@ -25,12 +27,22 @@ class Game {
         this.eventBus = new EventBus();
         this.gameService = new GameService(this.store, this.eventBus);
 
+        // === Presentation Layer ===
+        this.uiManager = new UIManager(this.store);
+
         // === Legacy Components ===
         const container = document.getElementById('canvas-container');
         this.renderer = new GridRenderer(container);
-        this.inputController = new InputController(this.renderer.getCanvas());
-        this.uiManager = new UIManager();
-        this.settingsModal = new SettingsModal((dims, gridSize) => {
+
+        // Input controller with new architecture integration
+        this.inputController = new InputController(
+            this.renderer.getCanvas(),
+            this.eventBus,
+            this.store
+        );
+
+        // Settings modal with both new architecture and legacy callback for backward compatibility
+        this.settingsModal = new SettingsModal(this.store, (dims, gridSize) => {
             this.handleSettingsChange(dims, gridSize);
         });
 
