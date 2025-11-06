@@ -285,18 +285,21 @@ describe('Reducers', () => {
             expect(state.visual.rotation.xw).toBeCloseTo(0.1);
             expect(state.visual.hoveredCell).toEqual([1, 1, 1, 1]);
 
-            // Settings change
+            // Settings change (dimensions change resets rotation axes)
             state = rootReducer(state, Actions.updateSettings({ dimensions: 5 }));
             expect(state.settings.dimensions).toBe(5);
+            // Note: rotation is reinitialized when dimensions change
+            expect(state.visual.rotation.xw).toBeDefined(); // Axis exists for 5D
+            expect(state.visual.rotation.xw).toBeCloseTo(0); // But reset to 0
 
             // Reset
             state = rootReducer(state, Actions.resetGame());
             expect(state.game.currentPlayer).toBe('X');
             expect(state.game.moveHistory).toEqual([]);
 
-            // Visual and settings should persist
-            expect(state.visual.rotation.xw).toBeCloseTo(0.1);
+            // Settings should persist, hoveredCell cleared on reset
             expect(state.settings.dimensions).toBe(5);
+            expect(state.visual.hoveredCell).toEqual([1, 1, 1, 1]); // Visual state persists through game reset
         });
     });
 });

@@ -46,10 +46,6 @@ class Game {
             this.handleSettingsChange(dims, gridSize);
         });
 
-        // Initialize rotations based on state
-        const state = this.store.getState();
-        this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
-
         // === Setup ===
         this.setupStateSubscription();
         this.setupEventListeners();
@@ -192,11 +188,10 @@ class Game {
          *
          * Responsibility:
          * - Recreate grid with new dimensions/gridSize
-         * - Update rotation axes for new dimensions
          *
          * Postcondition:
          * - Grid recreated with new settings
-         * - Rotation axes updated
+         * - Rotation axes updated in StateStore by visualReducer
          */
         this.eventBus.on('settings:changed', ({ newSettings }) => {
             // Heavy operation: recreate grid with new settings
@@ -204,15 +199,12 @@ class Game {
                 newSettings.dimensions,
                 newSettings.gridSize
             );
-            // Update rotation axes for new dimensions
-            this.rotations = RotationInitializer.createRotations(newSettings.dimensions);
         });
 
         // Input controller events
         this.inputController.addEventListener('rotate', (e) => {
             const { axis, delta } = e.detail;
             this.gameService.updateRotation(axis, delta);
-            this.rotations[axis] += delta;
         });
 
         this.inputController.addEventListener('cellClick', (e) => {
@@ -427,13 +419,14 @@ class Game {
         // Auto-rotate if enabled
         if (state.visual.autoRotate) {
             const rotationSpeed = 0.005;
-            Object.keys(this.rotations).forEach(axis => {
-                this.rotations[axis] += rotationSpeed;
+            const rotations = state.visual.rotation;
+            Object.keys(rotations).forEach(axis => {
+                this.gameService.updateRotation(axis, rotationSpeed);
             });
         }
 
-        // Update renderer rotations and render
-        this.renderer.setRotations(this.rotations);
+        // Update renderer rotations from store and render
+        this.renderer.setRotations(state.visual.rotation);
         this.renderer.render();
     }
 }
