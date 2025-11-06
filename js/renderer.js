@@ -360,4 +360,47 @@ export class GridRenderer {
         // Dispose scene manager
         this.sceneManager.dispose();
     }
+
+    /**
+     * Get cell by coordinates (adapter for new architecture)
+     * @param {Array<number>} coords - Cell coordinates
+     * @returns {Object|null} Cell object or null
+     */
+    getCellByCoords(coords) {
+        return this.cells.find(cell => {
+            if (!cell.coordsArray) return false;
+            if (cell.coordsArray.length !== coords.length) return false;
+            return cell.coordsArray.every((val, i) => val === coords[i]);
+        }) || null;
+    }
+
+    /**
+     * Remove marker from cell (adapter for new architecture)
+     * @param {Object} cell - Cell object
+     */
+    removeMarker(cell) {
+        if (!cell) return;
+        this.markerRenderer.clearMarkerFromCell(cell);
+    }
+
+    /**
+     * Recreate grid with new dimensions (adapter for new architecture)
+     * @param {number} dimensions - Number of dimensions
+     * @param {number} gridSize - Grid size
+     */
+    recreateGrid(dimensions, gridSize) {
+        // Store current settings
+        const oldDimensions = this.cells.length > 0 ?
+            this.cells[0].coordsArray.length : dimensions;
+
+        // Clear everything
+        this.dispose();
+
+        // Note: This is a simplified version
+        // Full implementation would require reinitializing the entire renderer
+        // For now, we'll just clear and let the page reload
+        console.warn('Grid recreation requires page reload for now');
+
+        // TODO: Implement full grid recreation in Phase 4
+    }
 }

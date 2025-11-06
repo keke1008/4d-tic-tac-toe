@@ -1,184 +1,265 @@
 /**
- * Main orchestrator for 4D Tic-Tac-Toe
- * Integrates all components and manages game flow
+ * Main orchestrator for 4D Tic-Tac-Toe (New Architecture)
+ * Integrates Infrastructure, Domain, and Application layers
  */
 
-import { CONFIG } from './config.js';
-import { GameBoard } from './game.js';
+import { StateStore } from './infrastructure/state/StateStore.js';
+import { EventBus } from './infrastructure/events/EventBus.js';
+import { rootReducer, initialState } from './infrastructure/state/reducers.js';
+import { GameService } from './application/services/GameService.js';
+
+// Legacy components (to be refactored in Phase 4)
 import { GridRenderer } from './renderer.js';
 import { InputController } from './input.js';
-import { RotationInitializer } from './game/RotationInitializer.js';
 import { SettingsModal } from './ui/SettingsModal.js';
 import { UIManager } from './ui/UIManager.js';
+import { RotationInitializer } from './game/RotationInitializer.js';
 
+/**
+ * Main Game Application
+ */
 class Game {
     constructor() {
-        // Initialize components
+        // === Core Architecture (Phase 1-3) ===
+        this.store = new StateStore(initialState, rootReducer);
+        this.eventBus = new EventBus();
+        this.gameService = new GameService(this.store, this.eventBus);
+
+        // === Legacy Components ===
         const container = document.getElementById('canvas-container');
         this.renderer = new GridRenderer(container);
-        this.gameBoard = new GameBoard();
         this.inputController = new InputController(this.renderer.getCanvas());
-
-        // UI managers
         this.uiManager = new UIManager();
         this.settingsModal = new SettingsModal((dims, gridSize) => {
-            this.reinitializeGame(dims, gridSize);
+            this.handleSettingsChange(dims, gridSize);
         });
 
-        // Game state
-        this.autoRotate = true;
-        this.rotationSpeed = CONFIG.ROTATION_SPEED;
-        this.dimensions = CONFIG.DIMENSIONS || 4;
-        this.rotations = RotationInitializer.createRotations(this.dimensions);
+        // Initialize rotations based on state
+        const state = this.store.getState();
+        this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
 
+        // === Setup ===
+        this.setupStateSubscription();
         this.setupEventListeners();
+        this.setupLegacyIntegration();
+
+        // Initial sync
+        this.syncStateToRenderer();
         this.updateStatus();
-        this.inputController.updateAutoRotateButton(this.autoRotate); // Set initial button state
         this.animate();
     }
 
     /**
-     * Setup event listeners
+     * Subscribe to state changes and update UI
      */
-    setupEventListeners() {
-        // Rotation from input
-        this.inputController.addEventListener('rotate', (e) => {
-            const { axis, delta } = e.detail;
-            this.rotations[axis] += delta;
-        });
-
-        // Cell click
-        this.inputController.addEventListener('cellClick', (e) => {
-            this.handleCellClick(e.detail.mouseX, e.detail.mouseY);
-        });
-
-        // Reset game - show settings modal
-        this.inputController.addEventListener('reset', () => {
-            this.settingsModal.show(this.dimensions, CONFIG.GRID_SIZE);
-        });
-
-        // Toggle auto-rotate
-        this.inputController.addEventListener('toggleAutoRotate', () => {
-            this.toggleAutoRotate();
-        });
-
-        // Camera pinch gesture (zoom)
-        this.inputController.addEventListener('cameraPinch', (e) => {
-            this.renderer.adjustCameraDistance(e.detail.delta);
-        });
-
-        // Camera pan gesture (move)
-        this.inputController.addEventListener('cameraPan', (e) => {
-            this.renderer.panCamera(e.detail.deltaX, e.detail.deltaY);
+    setupStateSubscription() {
+        this.store.subscribe((state) => {
+            this.onStateChange(state);
         });
     }
 
     /**
-     * Handle cell click (two-step process: preview → confirm)
-     * @param {number} mouseX - Normalized mouse X
-     * @param {number} mouseY - Normalized mouse Y
+     * Handle state changes from store
      */
-    handleCellClick(mouseX, mouseY) {
-        if (this.gameBoard.isGameOver()) return;
+    onStateChange(state) {
+        // Update UI status
+        this.updateStatus();
 
-        const cell = this.renderer.getCellAtMouse(mouseX, mouseY);
-        if (!cell) return;
-
-        // Use coordsArray for N-dimensional support
-        const coords = cell.coordsArray;
-        const currentPlayer = this.gameBoard.getCurrentPlayer();
-        const previewCell = this.renderer.getPreviewCell();
-
-        // Check if this cell is already occupied
-        if (this.gameBoard.getMarker(coords)) return;
-
-        // If clicking the already previewed cell → confirm placement
-        if (previewCell === cell) {
-            // Try to place marker
-            if (this.gameBoard.placeMarker(coords)) {
-                this.renderer.createMarker(cell, currentPlayer);
-                this.renderer.clearPreviewSelection();
-
-                // Check win condition
-                if (this.gameBoard.checkWin(coords)) {
-                    this.gameBoard.setGameOver(currentPlayer);
-                    this.updateStatus(null, true); // Victory!
-                } else if (this.gameBoard.isBoardFull()) {
-                    this.gameBoard.setGameOver(null);
-                    this.updateStatus('引き分け！');
-                } else {
-                    // Switch player
-                    this.gameBoard.switchPlayer();
-                    this.updateStatus(); // Normal turn
+        // Sync visual state to renderer
+        if (state.visual.previewCell !== this._lastPreviewCell) {
+            this._lastPreviewCell = state.visual.previewCell;
+            if (state.visual.previewCell) {
+                const cell = this.renderer.getCellByCoords(state.visual.previewCell);
+                if (cell) {
+                    this.renderer.setPreviewSelection(cell);
                 }
+            } else {
+                this.renderer.clearPreviewSelection();
             }
-        } else {
-            // First click or different cell → preview selection
-            this.renderer.setPreviewSelection(cell, currentPlayer);
-            this.updateStatus(`プレイヤー ${currentPlayer}: もう一度クリックで確定`);
+        }
+
+        // Update auto-rotate button
+        if (state.visual.autoRotate !== this._lastAutoRotate) {
+            this._lastAutoRotate = state.visual.autoRotate;
+            this.inputController.updateAutoRotateButton(state.visual.autoRotate);
         }
     }
 
     /**
-     * Reset the game
+     * Setup event bus listeners
      */
-    reset() {
-        this.gameBoard.reset();
-        this.renderer.clearMarkers();
-        this.updateStatus(); // Reset to normal turn display
+    setupEventListeners() {
+        // Game events
+        this.eventBus.on('game:markerPlaced', ({ position, player }) => {
+            const cell = this.renderer.getCellByCoords(position);
+            if (cell) {
+                this.renderer.createMarker(cell, player);
+            }
+        });
+
+        this.eventBus.on('game:reset', () => {
+            this.reinitializeGame();
+        });
+
+        this.eventBus.on('settings:updated', ({ settings }) => {
+            this.rotations = RotationInitializer.createRotations(settings.dimensions);
+        });
+
+        // Input controller events
+        this.inputController.addEventListener('rotate', (e) => {
+            const { axis, delta } = e.detail;
+            this.gameService.updateRotation(axis, delta);
+            this.rotations[axis] += delta;
+        });
+
+        this.inputController.addEventListener('cellClick', (e) => {
+            this.handleCellClick(e.detail.mouseX, e.detail.mouseY);
+        });
+
+        this.inputController.addEventListener('reset', () => {
+            const state = this.store.getState();
+            this.settingsModal.show(state.settings.dimensions, state.settings.gridSize);
+        });
+
+        this.inputController.addEventListener('toggleAutoRotate', () => {
+            this.gameService.toggleAutoRotate();
+        });
+
+        this.inputController.addEventListener('cameraPinch', (e) => {
+            this.renderer.adjustCameraDistance(e.detail.delta);
+        });
+
+        this.inputController.addEventListener('cameraPan', (e) => {
+            this.renderer.panCamera(e.detail.deltaX, e.detail.deltaY);
+        });
+
+        // Undo button
+        document.getElementById('undo-button')?.addEventListener('click', () => {
+            this.handleUndo();
+        });
     }
 
     /**
-     * Reinitialize game with new settings
-     * @param {number} newDimensions - New dimension count
-     * @param {number} newGridSize - New grid size
+     * Setup legacy integration (bridge old and new)
      */
-    reinitializeGame(newDimensions, newGridSize) {
-        // Update CONFIG
-        CONFIG.DIMENSIONS = newDimensions;
-        CONFIG.GRID_SIZE = newGridSize;
+    setupLegacyIntegration() {
+        // Store last values to detect changes
+        this._lastPreviewCell = null;
+        this._lastAutoRotate = true;
+    }
 
-        // Store current settings
-        this.dimensions = newDimensions;
+    /**
+     * Handle cell click
+     */
+    handleCellClick(mouseX, mouseY) {
+        const state = this.store.getState();
 
-        // Dispose old renderer
-        this.renderer.dispose();
+        // Don't allow moves when game is over
+        if (state.game.gamePhase !== 'playing') return;
 
-        // Recreate components
-        const container = document.getElementById('canvas-container');
-        this.renderer = new GridRenderer(container);
-        this.gameBoard = new GameBoard();
-        this.inputController = new InputController(this.renderer.getCanvas());
+        const cell = this.renderer.getCellAtMouse(mouseX, mouseY);
+        if (!cell) return;
 
-        // UI managers are persistent (no need to recreate)
+        const coords = cell.coordsArray;
 
-        // Reset game state
-        this.autoRotate = true;
-        this.rotationSpeed = CONFIG.ROTATION_SPEED;
-        this.rotations = RotationInitializer.createRotations(this.dimensions);
+        // Use GameService for game logic
+        this.gameService.handleCellClick(coords);
+    }
 
-        // Reattach event listeners
-        this.setupEventListeners();
+    /**
+     * Handle undo button
+     */
+    handleUndo() {
+        const state = this.store.getState();
+
+        if (!this.gameService.canUndo()) return;
+
+        // Get the last move before undo
+        const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
+
+        // Undo in game service
+        this.gameService.undo();
+
+        // Remove marker from renderer
+        if (lastMove) {
+            const cell = this.renderer.getCellByCoords(lastMove.position);
+            if (cell) {
+                this.renderer.removeMarker(cell);
+            }
+        }
+
         this.updateStatus();
-        this.inputController.updateAutoRotateButton(this.autoRotate);
     }
 
     /**
-     * Toggle auto-rotation
+     * Handle settings change
      */
-    toggleAutoRotate() {
-        this.autoRotate = !this.autoRotate;
-        this.inputController.updateAutoRotateButton(this.autoRotate);
+    handleSettingsChange(dimensions, gridSize) {
+        this.gameService.updateSettings({ dimensions, gridSize });
+        this.reinitializeGame();
     }
 
     /**
-     * Update status display with player color and marker
-     * @param {string} message - Status message (optional)
-     * @param {boolean} isVictory - Whether this is a victory message
+     * Reinitialize game with current settings
      */
-    updateStatus(message = null, isVictory = false) {
-        const currentPlayer = this.gameBoard.getCurrentPlayer();
-        this.uiManager.updateStatus(currentPlayer, message, isVictory);
+    reinitializeGame() {
+        const state = this.store.getState();
+
+        // Clear renderer
+        this.renderer.clearAllMarkers();
+        this.renderer.clearPreviewSelection();
+
+        // Recreate grid with new dimensions
+        this.renderer.recreateGrid(state.settings.dimensions, state.settings.gridSize);
+
+        // Reset rotations
+        this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
+
+        // Reset game through service
+        this.gameService.resetGame();
+
+        // Update UI
+        this.updateStatus();
+    }
+
+    /**
+     * Sync current state to renderer
+     */
+    syncStateToRenderer() {
+        const state = this.store.getState();
+
+        // Sync all placed markers
+        state.game.moveHistory.forEach(move => {
+            const cell = this.renderer.getCellByCoords(move.position);
+            if (cell) {
+                this.renderer.createMarker(cell, move.player);
+            }
+        });
+    }
+
+    /**
+     * Update status display
+     */
+    updateStatus() {
+        const state = this.store.getState();
+        let status;
+
+        if (state.game.gamePhase === 'won') {
+            status = `プレイヤー ${state.game.winner} の勝利！`;
+            this.uiManager.showVictoryStatus(status);
+        } else if (state.game.gamePhase === 'draw') {
+            status = '引き分け！';
+            this.uiManager.showVictoryStatus(status);
+        } else {
+            status = `プレイヤー ${state.game.currentPlayer} のターン`;
+            this.uiManager.updateStatus(status);
+        }
+
+        // Update undo button state
+        const undoButton = document.getElementById('undo-button');
+        if (undoButton) {
+            undoButton.disabled = !this.gameService.canUndo();
+        }
     }
 
     /**
@@ -187,23 +268,28 @@ class Game {
     animate() {
         requestAnimationFrame(() => this.animate());
 
-        // Auto-rotation
-        if (this.autoRotate) {
-            this.rotations.xw += this.rotationSpeed;
-            this.rotations.yz += this.rotationSpeed * 0.7;
+        const state = this.store.getState();
+
+        // Auto-rotate if enabled
+        if (state.visual.autoRotate) {
+            const rotationSpeed = 0.005;
+            Object.keys(this.rotations).forEach(axis => {
+                this.rotations[axis] += rotationSpeed;
+            });
         }
 
-        // Update renderer
-        this.renderer.setRotations(this.rotations);
-        this.renderer.render();
+        // Render scene
+        this.renderer.render(this.rotations);
     }
 }
 
 // Initialize game when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        new Game();
+        window.game = new Game();
     });
 } else {
-    new Game();
+    window.game = new Game();
 }
+
+export { Game };
