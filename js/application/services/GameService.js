@@ -87,6 +87,20 @@ export class GameService {
     }
 
     /**
+     * Redo last undone move
+     */
+    redo() {
+        if (!this.canRedo()) {
+            return;
+        }
+
+        this.store.dispatch(Actions.redoMove());
+
+        // Emit event
+        this.eventBus.emit('game:redone', {});
+    }
+
+    /**
      * Toggle auto-rotation
      */
     toggleAutoRotate() {
@@ -165,6 +179,16 @@ export class GameService {
      */
     canUndo() {
         return this.store.getState().game.moveHistory.length > 0 &&
+               this.store.getState().game.gamePhase === 'playing';
+    }
+
+    /**
+     * Check if redo is possible
+     * @returns {boolean}
+     */
+    canRedo() {
+        const redoStack = this.store.getState().game.redoStack || [];
+        return redoStack.length > 0 &&
                this.store.getState().game.gamePhase === 'playing';
     }
 

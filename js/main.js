@@ -101,6 +101,11 @@ class Game {
             this.reinitializeGame();
         });
 
+        this.eventBus.on('game:redone', () => {
+            // Redo event - renderer update handled in handleRedo()
+            this.updateStatus();
+        });
+
         this.eventBus.on('settings:updated', ({ settings }) => {
             this.rotations = RotationInitializer.createRotations(settings.dimensions);
         });
@@ -136,6 +141,11 @@ class Game {
         // Undo button
         document.getElementById('undo-button')?.addEventListener('click', () => {
             this.handleUndo();
+        });
+
+        // Redo button
+        document.getElementById('redo-button')?.addEventListener('click', () => {
+            this.handleRedo();
         });
     }
 
@@ -185,6 +195,32 @@ class Game {
             const cell = this.renderer.getCellByCoords(lastMove.position);
             if (cell) {
                 this.renderer.removeMarker(cell);
+            }
+        }
+
+        this.updateStatus();
+    }
+
+    /**
+     * Handle redo button
+     */
+    handleRedo() {
+        const state = this.store.getState();
+
+        if (!this.gameService.canRedo()) return;
+
+        // Get the move to redo
+        const redoStack = state.game.redoStack || [];
+        const moveToRedo = redoStack[redoStack.length - 1];
+
+        // Redo in game service
+        this.gameService.redo();
+
+        // Add marker back to renderer
+        if (moveToRedo) {
+            const cell = this.renderer.getCellByCoords(moveToRedo.position);
+            if (cell) {
+                this.renderer.createMarker(cell, moveToRedo.player);
             }
         }
 
@@ -251,10 +287,15 @@ class Game {
             this.uiManager.updateStatus(status);
         }
 
-        // Update undo button state
+        // Update undo/redo button states
         const undoButton = document.getElementById('undo-button');
         if (undoButton) {
             undoButton.disabled = !this.gameService.canUndo();
+        }
+
+        const redoButton = document.getElementById('redo-button');
+        if (redoButton) {
+            redoButton.disabled = !this.gameService.canRedo();
         }
     }
 
