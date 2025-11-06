@@ -389,18 +389,39 @@ export class GridRenderer {
      * @param {number} gridSize - Grid size
      */
     recreateGrid(dimensions, gridSize) {
-        // Store current settings
-        const oldDimensions = this.cells.length > 0 ?
-            this.cells[0].coordsArray.length : dimensions;
+        // Clear existing grid
+        this.cells.forEach(cell => {
+            if (cell.group) {
+                this.sceneManager.scene.remove(cell.group);
+            }
+        });
 
-        // Clear everything
-        this.dispose();
+        // Clear connections
+        if (this.connectionMeshes) {
+            this.connectionMeshes.forEach(mesh => {
+                this.sceneManager.scene.remove(mesh);
+            });
+            this.connectionMeshes = [];
+        }
 
-        // Note: This is a simplified version
-        // Full implementation would require reinitializing the entire renderer
-        // For now, we'll just clear and let the page reload
-        console.warn('Grid recreation requires page reload for now');
+        // Clear arrays
+        this.cells = [];
+        this.cellMeshes = [];
 
-        // TODO: Implement full grid recreation in Phase 4
+        // Update dimensions
+        this.dimensions = dimensions;
+        CONFIG.DIMENSIONS = dimensions;
+        CONFIG.GRID_SIZE = gridSize;
+
+        // Reinitialize rotations
+        this.rotations = RotationInitializer.createRotations(dimensions);
+
+        // Recreate grid and connections
+        this.createGrid();
+        this.createGridConnections();
+
+        // Reset hover state
+        this.hoveredCell = null;
+        this.previewCell = null;
     }
 }
