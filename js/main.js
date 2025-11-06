@@ -260,15 +260,17 @@ class Game {
     /**
      * Handle settings change (called from SettingsModal)
      * This orchestrates the full settings change flow:
-     * 1. Update settings → triggers 'settings:changed' event → grid recreation
-     * 2. Reset game state → triggers 'game:stateReset' event → UI update
+     * 1. Reset game state first → triggers 'game:stateReset' event → clears markers and moveHistory
+     * 2. Update settings → triggers 'settings:changed' event → grid recreation with clean state
      */
     handleSettingsChange(dimensions, gridSize) {
-        // Update settings (triggers 'settings:changed' which recreates grid)
-        this.gameService.updateSettings({ dimensions, gridSize });
-
-        // Reset game state (triggers 'game:stateReset' which updates UI)
+        // Reset game state FIRST (clears markers and moveHistory)
+        // This ensures the new grid is created with clean state
         this.gameService.resetGameState();
+
+        // Update settings (triggers 'settings:changed' which recreates grid)
+        // At this point, moveHistory is empty, so no markers will be re-applied
+        this.gameService.updateSettings({ dimensions, gridSize });
 
         // Note: Grid recreation and UI updates are handled by event listeners
         // This prevents circular dependencies and keeps the flow one-directional
