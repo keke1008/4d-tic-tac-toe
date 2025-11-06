@@ -62,8 +62,9 @@ export class ConnectionManager {
      * @param {Array} cells - Array of cell objects (for determining line colors)
      * @param {Object} hoveredCell - Currently hovered cell (optional)
      * @param {Object} previewCell - Currently previewed cell (optional)
+     * @param {string} currentPlayer - Current player ('X' or 'O') for preview coloring
      */
-    updateLines(rotations, cells = [], hoveredCell = null, previewCell = null) {
+    updateLines(rotations, cells = [], hoveredCell = null, previewCell = null, currentPlayer = 'X') {
         // Build map of cell positions to cell objects for fast lookup
         const cellMap = new Map();
         cells.forEach(cell => {
@@ -135,8 +136,7 @@ export class ConnectionManager {
                 line.material.opacity = CONFIG.SELECTED_GRID_OPACITY;
             } else if (isPreview) {
                 // Preview state: show preview player color
-                const previewPlayer = previewCell?.previewPlayer || 'X';
-                const color = previewPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+                const color = currentPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
                 line.material.color.setHex(color);
                 line.material.opacity = CONFIG.PREVIEW_GRID_OPACITY;
             } else if (isHovered) {

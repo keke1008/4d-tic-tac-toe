@@ -258,23 +258,36 @@ export class GridRenderer {
         // Get hovered and preview cells from store
         let hoveredCell = null;
         let previewCell = null;
+        let moveHistory = [];
+        let currentPlayer = 'X';
         if (this.store) {
-            const state = this.store.getState().visual;
+            const state = this.store.getState();
 
-            if (state.hoveredCell) {
-                hoveredCell = this.getCellByCoords(state.hoveredCell);
+            if (state.visual.hoveredCell) {
+                hoveredCell = this.getCellByCoords(state.visual.hoveredCell);
             }
 
-            if (state.previewCell) {
-                previewCell = this.getCellByCoords(state.previewCell);
+            if (state.visual.previewCell) {
+                previewCell = this.getCellByCoords(state.visual.previewCell);
             }
+
+            moveHistory = state.game.moveHistory || [];
+            currentPlayer = state.game.currentPlayer;
         }
+
+        // Add marker information to cells for connection line coloring
+        this.cells.forEach(cell => {
+            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromHistory(cell.coordsArray, moveHistory);
+            cell.isSelected = hasMarker;
+            cell.player = markerPlayer;
+        });
 
         this.connectionManager.updateLines(
             this.rotations,
             this.cells,
             hoveredCell,
-            previewCell
+            previewCell,
+            currentPlayer
         );
     }
 
