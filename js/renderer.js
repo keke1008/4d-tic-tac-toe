@@ -139,31 +139,6 @@ export class GridRenderer {
     }
 
     /**
-     * Get marker state for a cell from move history
-     * @param {Array<number>} position - Cell position coordinates
-     * @param {Array} moveHistory - Move history from state
-     * @returns {{ hasMarker: boolean, player: string|null }} Marker state
-     * @private
-     * @deprecated Use _getCellMarkerFromMap instead for better performance
-     */
-    _getCellMarkerFromHistory(position, moveHistory) {
-        if (!moveHistory || moveHistory.length === 0) {
-            return { hasMarker: false, player: null };
-        }
-
-        // Find if this position exists in move history
-        const move = moveHistory.find(m =>
-            this._areCoordsEqual(m.position, position)
-        );
-
-        if (move) {
-            return { hasMarker: true, player: move.player };
-        }
-
-        return { hasMarker: false, player: null };
-    }
-
-    /**
      * Get marker state for a cell from marker map
      * @param {Array<number>} position - Cell position coordinates
      * @param {Map<string, {player: string}>} markerMap - Pre-built marker map
