@@ -100,12 +100,28 @@ class Game {
 
     /**
      * Setup event bus listeners
+     *
+     * IMPORTANT: Event listeners perform SIDE EFFECTS ONLY (rendering, UI updates)
+     * They NEVER call Commands to prevent circular dependencies
+     *
+     * @see EVENT_RESPONSIBILITIES.md for detailed event specifications
      */
     setupEventListeners() {
-        // Game events - listen to completion notifications (past tense)
-        // These listeners perform side effects only (rendering, UI updates)
-        // They NEVER call Commands that could create circular dependencies
+        // ===== Game Events =====
 
+        /**
+         * Event: game:markerPlaced
+         *
+         * Precondition (guaranteed by GameService.handleCellClick):
+         * - Marker added to moveHistory
+         * - currentPlayer switched
+         *
+         * Responsibility:
+         * - Render marker on the grid
+         *
+         * Postcondition:
+         * - Marker visible on renderer at specified position
+         */
         this.eventBus.on('game:markerPlaced', ({ position, player }) => {
             const cell = this.renderer.getCellByCoords(position);
             if (cell) {
@@ -113,6 +129,24 @@ class Game {
             }
         });
 
+        /**
+         * Event: game:stateReset
+         *
+         * Precondition (guaranteed by GameService.resetGameState):
+         * - moveHistory = []
+         * - redoStack = []
+         * - currentPlayer = 'X'
+         * - winner = null
+         * - previewCell = null
+         *
+         * Responsibility:
+         * - Clear all markers from renderer
+         * - Update UI status to initial state
+         *
+         * Postcondition:
+         * - All markers cleared from grid
+         * - UI shows "Player X's turn"
+         */
         this.eventBus.on('game:stateReset', () => {
             // Clear all markers from the grid
             this.renderer.clearMarkers();
@@ -120,16 +154,64 @@ class Game {
             this.updateStatus();
         });
 
+        /**
+         * Event: game:moveUndone
+         *
+         * Precondition (guaranteed by GameService.undo):
+         * - Last move removed from moveHistory
+         * - That move added to redoStack
+         * - currentPlayer switched back
+         *
+         * Responsibility:
+         * - Update UI status
+         * - NOTE: Marker removal handled by handleUndo() to avoid duplication
+         *
+         * Postcondition:
+         * - UI status updated
+         */
         this.eventBus.on('game:moveUndone', () => {
             // Move removal is handled in handleUndo()
             this.updateStatus();
         });
 
+        /**
+         * Event: game:moveRedone
+         *
+         * Precondition (guaranteed by GameService.redo):
+         * - Move added back to moveHistory
+         * - That move removed from redoStack
+         * - currentPlayer switched forward
+         *
+         * Responsibility:
+         * - Update UI status
+         * - NOTE: Marker addition handled by handleRedo() to avoid duplication
+         *
+         * Postcondition:
+         * - UI status updated
+         */
         this.eventBus.on('game:moveRedone', () => {
             // Move addition is handled in handleRedo()
             this.updateStatus();
         });
 
+        // ===== Settings Events =====
+
+        /**
+         * Event: settings:changed
+         *
+         * Precondition (guaranteed by GameService.updateSettings):
+         * - settings.dimensions updated
+         * - settings.gridSize updated
+         * - RECOMMENDED: moveHistory should be empty (cleared by resetGameState)
+         *
+         * Responsibility:
+         * - Recreate grid with new dimensions/gridSize
+         * - Update rotation axes for new dimensions
+         *
+         * Postcondition:
+         * - Grid recreated with new settings
+         * - Rotation axes updated
+         */
         this.eventBus.on('settings:changed', ({ newSettings }) => {
             // Heavy operation: recreate grid with new settings
             this.renderer.recreateGrid(
@@ -259,16 +341,47 @@ class Game {
 
     /**
      * Handle settings change (called from SettingsModal)
-     * This orchestrates the full settings change flow:
-     * 1. Reset game state first → triggers 'game:stateReset' event → clears markers and moveHistory
-     * 2. Update settings → triggers 'settings:changed' event → grid recreation with clean state
+     *
+     * **Orchestration Type**: Composite operation (multiple Commands in sequence)
+     *
+     * **Purpose**: Change game settings and restart with clean state
+     *
+     * **Execution Order** (CRITICAL - do not change):
+     * 1. resetGameState()
+     *    - Clears moveHistory, redoStack
+     *    - Emits 'game:stateReset'
+     *    - Listener clears markers from renderer
+     *
+     * 2. updateSettings({ dimensions, gridSize })
+     *    - Updates settings in state
+     *    - Emits 'settings:changed'
+     *    - Listener recreates grid (now with empty moveHistory)
+     *
+     * **Why This Order?**
+     * - If we call updateSettings() first, grid is recreated while moveHistory
+     *   still has old moves, potentially causing markers to appear on new grid
+     * - By calling resetGameState() first, we guarantee moveHistory is empty
+     *   when grid recreation happens
+     *
+     * **Precondition**:
+     * - User has selected new dimensions/gridSize in SettingsModal
+     *
+     * **Postcondition**:
+     * - Game state reset to initial (no markers, player X's turn)
+     * - Grid recreated with new dimensions/gridSize
+     * - UI synchronized with new state
+     *
+     * @param {number} dimensions - New dimension count
+     * @param {number} gridSize - New grid size (n-in-a-row)
+     *
+     * @see EVENT_RESPONSIBILITIES.md section "複合操作フロー"
      */
     handleSettingsChange(dimensions, gridSize) {
-        // Reset game state FIRST (clears markers and moveHistory)
+        // Step 1: Reset game state FIRST (clears markers and moveHistory)
         // This ensures the new grid is created with clean state
         this.gameService.resetGameState();
 
-        // Update settings (triggers 'settings:changed' which recreates grid)
+        // Step 2: Update settings (triggers 'settings:changed' which recreates grid)
         // At this point, moveHistory is empty, so no markers will be re-applied
         this.gameService.updateSettings({ dimensions, gridSize });
 

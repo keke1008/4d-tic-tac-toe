@@ -23,6 +23,21 @@ export class GameService {
 
     /**
      * Handle cell click (preview or confirm placement)
+     *
+     * **Command Type**: User action handler
+     *
+     * **Precondition**:
+     * - gamePhase === 'playing' (game not finished)
+     *
+     * **Postcondition** (if confirming placement):
+     * - Marker added to moveHistory
+     * - currentPlayer switched
+     * - previewCell cleared
+     * - Event 'game:markerPlaced' emitted
+     *
+     * **Postcondition** (if setting preview):
+     * - previewCell set to clicked position
+     *
      * @param {Array<number>} position - Cell position
      */
     handleCellClick(position) {
@@ -50,7 +65,26 @@ export class GameService {
 
     /**
      * Reset game state (clears markers, history, but keeps settings)
-     * This is a Command that changes state and emits completion event
+     *
+     * **Command Type**: State reset
+     *
+     * **Precondition**:
+     * - None (can be called at any time)
+     *
+     * **Postcondition**:
+     * - moveHistory = []
+     * - redoStack = []
+     * - currentPlayer = 'X'
+     * - winner = null
+     * - gamePhase = 'playing'
+     * - previewCell = null
+     * - Event 'game:stateReset' emitted with { settings }
+     *
+     * **Event Listener Responsibility**:
+     * - Clear all markers from renderer
+     * - Update UI status to initial state
+     *
+     * @see EVENT_RESPONSIBILITIES.md for detailed event specification
      */
     resetGameState() {
         const settings = this.store.getState().settings;
@@ -63,8 +97,27 @@ export class GameService {
 
     /**
      * Update game settings (dimensions, grid size, etc.)
-     * This is a Command that changes settings and emits completion event
+     *
+     * **Command Type**: Settings update
+     *
+     * **Precondition**:
+     * - RECOMMENDED: Game state should be reset (moveHistory empty) before calling
+     *   to avoid old markers on new grid
+     *
+     * **Postcondition**:
+     * - settings.dimensions = newSettings.dimensions
+     * - settings.gridSize = newSettings.gridSize
+     * - Event 'settings:changed' emitted with { oldSettings, newSettings }
+     *
+     * **Event Listener Responsibility**:
+     * - Recreate grid with new dimensions/gridSize
+     * - Update rotation axes for new dimensions
+     *
      * @param {Object} newSettings - New settings
+     * @param {number} newSettings.dimensions - Number of dimensions
+     * @param {number} newSettings.gridSize - Grid size (n-in-a-row)
+     *
+     * @see EVENT_RESPONSIBILITIES.md for detailed event specification
      */
     updateSettings(newSettings) {
         const oldSettings = this.store.getState().settings;
@@ -81,7 +134,24 @@ export class GameService {
 
     /**
      * Undo last move
-     * This is a Command that changes state and emits completion event
+     *
+     * **Command Type**: State mutation (history navigation)
+     *
+     * **Precondition**:
+     * - moveHistory.length > 0
+     * - gamePhase === 'playing'
+     *
+     * **Postcondition**:
+     * - Last move removed from moveHistory
+     * - That move added to redoStack
+     * - currentPlayer switched back
+     * - Event 'game:moveUndone' emitted with { move }
+     *
+     * **Event Listener Responsibility**:
+     * - Update UI status
+     * - (Marker removal handled by caller in main.js)
+     *
+     * @see EVENT_RESPONSIBILITIES.md for detailed event specification
      */
     undo() {
         if (!this.canUndo()) {
@@ -99,7 +169,24 @@ export class GameService {
 
     /**
      * Redo last undone move
-     * This is a Command that changes state and emits completion event
+     *
+     * **Command Type**: State mutation (history navigation)
+     *
+     * **Precondition**:
+     * - redoStack.length > 0
+     * - gamePhase === 'playing'
+     *
+     * **Postcondition**:
+     * - Last move from redoStack added back to moveHistory
+     * - That move removed from redoStack
+     * - currentPlayer switched forward
+     * - Event 'game:moveRedone' emitted with { move }
+     *
+     * **Event Listener Responsibility**:
+     * - Update UI status
+     * - (Marker addition handled by caller in main.js)
+     *
+     * @see EVENT_RESPONSIBILITIES.md for detailed event specification
      */
     redo() {
         if (!this.canRedo()) {
