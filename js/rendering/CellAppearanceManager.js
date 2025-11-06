@@ -14,11 +14,13 @@ export class CellAppearanceManager {
      * @param {boolean} isHovered - Whether cell is hovered
      * @param {boolean} isPreview - Whether cell is in preview state
      * @param {string} currentPlayer - Current player ('X' or 'O'), used for preview color
+     * @param {boolean} hasMarker - Whether cell has a marker placed
+     * @param {string|null} markerPlayer - Player who placed marker ('X' or 'O'), or null
      */
-    updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer = 'X') {
-        if (cell.marker) {
-            // Fully selected: player color with high opacity (set by MarkerRenderer)
-            this.applySelectedAppearance(cell);
+    updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer = 'X', hasMarker = false, markerPlayer = null) {
+        if (hasMarker) {
+            // Fully selected: player color with high opacity
+            this.applySelectedAppearance(cell, markerPlayer);
         } else if (isPreview) {
             // Preview selection: show player color at reduced opacity
             this.applyPreviewAppearance(cell, currentPlayer);
@@ -31,11 +33,14 @@ export class CellAppearanceManager {
     /**
      * Apply appearance for selected cells
      * @param {Object} cell - Cell object
+     * @param {string} player - Player who placed marker ('X' or 'O')
      */
-    applySelectedAppearance(cell) {
-        // Color and line width are set by MarkerRenderer
-        // Just update opacity here
+    applySelectedAppearance(cell, player) {
+        const color = player === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
+
+        cell.wireframe.material.color.setHex(color);
         cell.wireframe.material.opacity = CONFIG.SELECTED_CELL_OPACITY;
+        cell.wireframe.material.linewidth = CONFIG.SELECTED_CELL_LINE_WIDTH;
     }
 
     /**

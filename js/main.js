@@ -51,8 +51,7 @@ class Game {
         this.setupEventListeners();
         this.setupLegacyIntegration();
 
-        // Initial sync
-        this.syncStateToRenderer();
+        // Initial sync (markers are automatically rendered from moveHistory in render loop)
         this.updateStatus();
         this.animate();
     }
@@ -99,16 +98,14 @@ class Game {
          * - currentPlayer switched
          *
          * Responsibility:
-         * - Render marker on the grid
+         * - None (markers now rendered automatically from moveHistory in render loop)
          *
          * Postcondition:
-         * - Marker visible on renderer at specified position
+         * - Marker automatically visible on next frame via updateCellPositions()
          */
         this.eventBus.on('game:markerPlaced', ({ position, player }) => {
-            const cell = this.renderer.getCellByCoords(position);
-            if (cell) {
-                this.renderer.createMarker(cell, player);
-            }
+            // Markers are now automatically rendered from state.game.moveHistory
+            // No manual renderer manipulation needed
         });
 
         /**
@@ -122,16 +119,14 @@ class Game {
          * - previewCell = null
          *
          * Responsibility:
-         * - Clear all markers from renderer
          * - Update UI status to initial state
          *
          * Postcondition:
-         * - All markers cleared from grid
+         * - Markers automatically cleared on next frame (moveHistory is empty)
          * - UI shows "Player X's turn"
          */
         this.eventBus.on('game:stateReset', () => {
-            // Clear all markers from the grid
-            this.renderer.clearMarkers();
+            // Markers are automatically cleared when moveHistory is empty
             // Update UI status
             this.updateStatus();
         });
@@ -269,24 +264,12 @@ class Game {
      * Handle undo button
      */
     handleUndo() {
-        const state = this.store.getState();
-
         if (!this.gameService.canUndo()) return;
-
-        // Get the last move before undo
-        const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
 
         // Undo in game service
         this.gameService.undo();
 
-        // Remove marker from renderer
-        if (lastMove) {
-            const cell = this.renderer.getCellByCoords(lastMove.position);
-            if (cell) {
-                this.renderer.removeMarker(cell);
-            }
-        }
-
+        // Marker is automatically removed on next frame (moveHistory updated)
         this.updateStatus();
     }
 
@@ -294,25 +277,12 @@ class Game {
      * Handle redo button
      */
     handleRedo() {
-        const state = this.store.getState();
-
         if (!this.gameService.canRedo()) return;
-
-        // Get the move to redo
-        const redoStack = state.game.redoStack || [];
-        const moveToRedo = redoStack[redoStack.length - 1];
 
         // Redo in game service
         this.gameService.redo();
 
-        // Add marker back to renderer
-        if (moveToRedo) {
-            const cell = this.renderer.getCellByCoords(moveToRedo.position);
-            if (cell) {
-                this.renderer.createMarker(cell, moveToRedo.player);
-            }
-        }
-
+        // Marker is automatically added back on next frame (moveHistory updated)
         this.updateStatus();
     }
 
@@ -366,20 +336,8 @@ class Game {
         // This prevents circular dependencies and keeps the flow one-directional
     }
 
-    /**
-     * Sync current state to renderer
-     */
-    syncStateToRenderer() {
-        const state = this.store.getState();
-
-        // Sync all placed markers
-        state.game.moveHistory.forEach(move => {
-            const cell = this.renderer.getCellByCoords(move.position);
-            if (cell) {
-                this.renderer.createMarker(cell, move.player);
-            }
-        });
-    }
+    // syncStateToRenderer() removed - markers are now automatically rendered
+    // from state.game.moveHistory in the render loop via updateCellPositions()
 
     /**
      * Update status display

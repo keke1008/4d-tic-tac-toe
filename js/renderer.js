@@ -7,7 +7,6 @@ import { rotate4D, project4Dto3D, getScaleFromW } from './mathnd.js';
 import { RotationInitializer } from './game/RotationInitializer.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
-import { MarkerRenderer } from './rendering/MarkerRenderer.js';
 import { CellAppearanceManager } from './rendering/CellAppearanceManager.js';
 import { GridBuilder } from './grid/GridBuilder.js';
 import { ConnectionManager } from './grid/ConnectionManager.js';
@@ -23,8 +22,7 @@ export class GridRenderer {
         this.dimensions = CONFIG.DIMENSIONS || 4;
         this.rotations = RotationInitializer.createRotations(this.dimensions);
 
-        // Initialize renderers and managers
-        this.markerRenderer = new MarkerRenderer();
+        // Initialize appearance manager
         this.appearanceManager = new CellAppearanceManager();
 
         this.setupThreeJS();
@@ -126,6 +124,30 @@ export class GridRenderer {
     }
 
     /**
+     * Get marker state for a cell from move history
+     * @param {Array<number>} position - Cell position coordinates
+     * @param {Array} moveHistory - Move history from state
+     * @returns {{ hasMarker: boolean, player: string|null }} Marker state
+     * @private
+     */
+    _getCellMarkerFromHistory(position, moveHistory) {
+        if (!moveHistory || moveHistory.length === 0) {
+            return { hasMarker: false, player: null };
+        }
+
+        // Find if this position exists in move history
+        const move = moveHistory.find(m =>
+            this._areCoordsEqual(m.position, position)
+        );
+
+        if (move) {
+            return { hasMarker: true, player: move.player };
+        }
+
+        return { hasMarker: false, player: null };
+    }
+
+    /**
      * Create mesh for a single cell
      * @param {Object} cell - Cell object
      */
@@ -186,10 +208,11 @@ export class GridRenderer {
      * Update all cell positions and appearance based on current rotation
      */
     updateCellPositions() {
-        // Get hovered and preview cells from store
+        // Get visual state and move history from store
         let hoveredCell = null;
         let previewCell = null;
         let currentPlayer = 'X';
+        let moveHistory = [];
 
         if (this.store) {
             const state = this.store.getState();
@@ -203,6 +226,7 @@ export class GridRenderer {
             }
 
             currentPlayer = state.game.currentPlayer;
+            moveHistory = state.game.moveHistory || [];
         }
 
         this.cells.forEach(cell => {
@@ -216,10 +240,13 @@ export class GridRenderer {
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
+            // Get marker state from move history
+            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromHistory(cell.coordsArray, moveHistory);
+
             // Update appearance (delegates to CellAppearanceManager)
             const isHovered = cell === hoveredCell;
             const isPreview = cell === previewCell;
-            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer);
+            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer, hasMarker, markerPlayer);
         });
     }
 
@@ -249,16 +276,6 @@ export class GridRenderer {
             hoveredCell,
             previewCell
         );
-    }
-
-    /**
-     * Create a marker (X or O) on a cell
-     * Delegates to MarkerRenderer
-     * @param {Object} cell - Cell object
-     * @param {string} player - 'X' or 'O'
-     */
-    createMarker(cell, player) {
-        this.markerRenderer.createMarker(cell, player);
     }
 
     /**
@@ -320,22 +337,6 @@ export class GridRenderer {
         return null;
     }
 
-    /**
-     * Clear all markers from cells and reset visual state
-     * Delegates to MarkerRenderer
-     */
-    clearMarkers() {
-        this.markerRenderer.clearAllMarkers(this.cells);
-        this.clearPreviewSelection();
-
-        // Update cell appearances immediately to reflect cleared states
-        // MarkerRenderer sets temporary neutral colors, but we need W-based colors
-        this.updateCellPositions();
-
-        // Update connection lines immediately to reflect cleared cell states
-        // Without this, connection lines stay colored until next frame
-        this.updateConnectionLines();
-    }
 
     /**
      * Update rotation angles
@@ -415,9 +416,6 @@ export class GridRenderer {
      * Dispose of all Three.js resources
      */
     dispose() {
-        // Clear markers
-        this.markerRenderer.clearAllMarkers(this.cells);
-
         // Dispose connection manager
         if (this.connectionManager) {
             this.connectionManager.dispose();
@@ -464,15 +462,6 @@ export class GridRenderer {
             if (cell.coordsArray.length !== coords.length) return false;
             return cell.coordsArray.every((val, i) => val === coords[i]);
         }) || null;
-    }
-
-    /**
-     * Remove marker from cell (adapter for new architecture)
-     * @param {Object} cell - Cell object
-     */
-    removeMarker(cell) {
-        if (!cell) return;
-        this.markerRenderer.clearMarkerFromCell(cell);
     }
 
     /**

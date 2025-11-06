@@ -74,8 +74,8 @@ export class GridBuilder {
             coordsArray: coords,    // Array form for easy iteration
             group: null,            // Will be set by renderer
             wireframe: null,        // Will be set by renderer
-            selectionMesh: null,    // Will be set by renderer
-            marker: false           // Boolean flag: true when marker is placed
+            selectionMesh: null     // Will be set by renderer
+            // Note: marker state is now derived from state.game.moveHistory, not stored on cells
         };
     }
 
