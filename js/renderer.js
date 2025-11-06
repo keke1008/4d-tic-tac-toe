@@ -389,6 +389,11 @@ export class GridRenderer {
      * @param {number} gridSize - Grid size
      */
     recreateGrid(dimensions, gridSize) {
+        // Clear all markers first (important: do this before clearing cells)
+        if (this.markerRenderer && this.cells) {
+            this.markerRenderer.clearAllMarkers(this.cells);
+        }
+
         // Clear existing grid
         this.cells.forEach(cell => {
             if (cell.group) {
