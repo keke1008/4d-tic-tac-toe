@@ -389,7 +389,7 @@ export class GridRenderer {
      * @param {number} gridSize - Grid size
      */
     recreateGrid(dimensions, gridSize) {
-        // Clear existing grid
+        // Clear existing grid (markers are automatically cleared as they're cell properties)
         this.cells.forEach(cell => {
             if (cell.group) {
                 this.sceneManager.scene.remove(cell.group);
