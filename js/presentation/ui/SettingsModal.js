@@ -113,18 +113,12 @@ export class SettingsModal {
         // Close modal first
         this.hideModal();
 
-        // Use new architecture if store available
+        // Close modal via state if store available
         if (this.store) {
-            // Dispatch action to update settings
-            this.store.dispatch(Actions.updateSettings({
-                dimensions: newDimensions,
-                gridSize: newGridSize
-            }));
-            // Close modal via state
             this.store.dispatch(Actions.setSettingsModalOpen(false));
         }
 
-        // Always call legacy callback if provided (needed for grid recreation)
+        // Call legacy callback if provided (this handles both state update and grid recreation)
         if (this.onApply) {
             this.onApply(newDimensions, newGridSize);
         }
