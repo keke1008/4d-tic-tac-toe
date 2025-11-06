@@ -1,0 +1,27 @@
+{
+  "name": "4d-tic-tac-toe",
+  "version": "4.0.0",
+  "description": "N-Dimensional Tic-Tac-Toe with architectural refactoring",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^1.0.0",
+    "vitest": "^1.0.0",
+    "jsdom": "^23.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  },
+  "keywords": [
+    "tic-tac-toe",
+    "4d",
+    "n-dimensional",
+    "three.js",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT"
+}
