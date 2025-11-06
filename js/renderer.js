@@ -124,24 +124,33 @@ export class GridRenderer {
     }
 
     /**
-     * Get marker state for a cell from move history
-     * @param {Array<number>} position - Cell position coordinates
+     * Build a map of cell positions to marker information
      * @param {Array} moveHistory - Move history from state
+     * @returns {Map<string, {player: string}>} Map of position keys to marker info
+     * @private
+     */
+    _buildMarkerMap(moveHistory) {
+        const markerMap = new Map();
+        moveHistory.forEach(move => {
+            const key = move.position.join(',');
+            markerMap.set(key, { player: move.player });
+        });
+        return markerMap;
+    }
+
+    /**
+     * Get marker state for a cell from marker map
+     * @param {Array<number>} position - Cell position coordinates
+     * @param {Map<string, {player: string}>} markerMap - Pre-built marker map
      * @returns {{ hasMarker: boolean, player: string|null }} Marker state
      * @private
      */
-    _getCellMarkerFromHistory(position, moveHistory) {
-        if (!moveHistory || moveHistory.length === 0) {
-            return { hasMarker: false, player: null };
-        }
+    _getCellMarkerFromMap(position, markerMap) {
+        const key = position.join(',');
+        const marker = markerMap.get(key);
 
-        // Find if this position exists in move history
-        const move = moveHistory.find(m =>
-            this._areCoordsEqual(m.position, position)
-        );
-
-        if (move) {
-            return { hasMarker: true, player: move.player };
+        if (marker) {
+            return { hasMarker: true, player: marker.player };
         }
 
         return { hasMarker: false, player: null };
@@ -206,13 +215,13 @@ export class GridRenderer {
 
     /**
      * Update all cell positions and appearance based on current rotation
+     * @param {Map<string, {player: string}>} markerMap - Pre-built marker map
      */
-    updateCellPositions() {
-        // Get visual state and move history from store
+    updateCellPositions(markerMap) {
+        // Get visual state from store
         let hoveredCell = null;
         let previewCell = null;
         let currentPlayer = 'X';
-        let moveHistory = [];
 
         if (this.store) {
             const state = this.store.getState();
@@ -226,7 +235,6 @@ export class GridRenderer {
             }
 
             currentPlayer = state.game.currentPlayer;
-            moveHistory = state.game.moveHistory || [];
         }
 
         this.cells.forEach(cell => {
@@ -240,8 +248,8 @@ export class GridRenderer {
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
-            // Get marker state from move history
-            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromHistory(cell.coordsArray, moveHistory);
+            // Get marker state from marker map (O(1) lookup)
+            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromMap(cell.coordsArray, markerMap);
 
             // Update appearance (delegates to CellAppearanceManager)
             const isHovered = cell === hoveredCell;
@@ -253,13 +261,14 @@ export class GridRenderer {
     /**
      * Update connection line positions
      * Delegates to ConnectionManager
+     * @param {Map<string, {player: string}>} markerMap - Pre-built marker map
      */
-    updateConnectionLines() {
+    updateConnectionLines(markerMap) {
         // Get hovered and preview cells from store
         let hoveredCell = null;
         let previewCell = null;
-        let moveHistory = [];
         let currentPlayer = 'X';
+
         if (this.store) {
             const state = this.store.getState();
 
@@ -271,23 +280,16 @@ export class GridRenderer {
                 previewCell = this.getCellByCoords(state.visual.previewCell);
             }
 
-            moveHistory = state.game.moveHistory || [];
             currentPlayer = state.game.currentPlayer;
         }
-
-        // Add marker information to cells for connection line coloring
-        this.cells.forEach(cell => {
-            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromHistory(cell.coordsArray, moveHistory);
-            cell.isSelected = hasMarker;
-            cell.player = markerPlayer;
-        });
 
         this.connectionManager.updateLines(
             this.rotations,
             this.cells,
             hoveredCell,
             previewCell,
-            currentPlayer
+            currentPlayer,
+            markerMap
         );
     }
 
@@ -402,8 +404,13 @@ export class GridRenderer {
      * Delegates to SceneManager
      */
     render() {
-        this.updateCellPositions();
-        this.updateConnectionLines();
+        // Build marker map once per frame for performance
+        const moveHistory = this.store ? (this.store.getState().game.moveHistory || []) : [];
+        const markerMap = this._buildMarkerMap(moveHistory);
+
+        // Update cells and connections using the same marker map
+        this.updateCellPositions(markerMap);
+        this.updateConnectionLines(markerMap);
         this.sceneManager.render(this.cameraController.getCamera());
     }
 
