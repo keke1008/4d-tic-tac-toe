@@ -14,7 +14,10 @@ const defaultSettings = {
 
 // Initial state structure
 export const initialState = {
-    game: GameState.initial(defaultSettings).toPlain(),
+    game: {
+        ...GameState.initial(defaultSettings).toPlain(),
+        redoStack: [], // Stack of moves that can be redone
+    },
     settings: defaultSettings,
     visual: {
         rotation: {},  // { xy: 0, xz: 0, ... }
@@ -63,7 +66,10 @@ function gameReducer(state = initialState.game, action, rootState) {
         case ActionTypes.PLACE_MARKER: {
             const { position, player } = action.payload;
             const newGameState = GameRules.placeMarker(gameState, position, player);
-            return newGameState.toPlain();
+            return {
+                ...newGameState.toPlain(),
+                redoStack: [], // Clear redo stack on new move
+            };
         }
 
         case ActionTypes.SWITCH_PLAYER: {
@@ -83,12 +89,51 @@ function gameReducer(state = initialState.game, action, rootState) {
         case ActionTypes.RESET_GAME: {
             const settings = action.payload.settings || rootState.settings;
             const newGameState = GameRules.reset(GameState.initial(settings));
-            return newGameState.toPlain();
+            return {
+                ...newGameState.toPlain(),
+                redoStack: [], // Clear redo stack on reset
+            };
         }
 
         case ActionTypes.UNDO_MOVE: {
+            if (gameState.moveHistory.length === 0) {
+                return state; // Nothing to undo
+            }
+
+            // Get the last move before undoing
+            const lastMove = gameState.moveHistory[gameState.moveHistory.length - 1];
+
+            // Undo the move
             const newGameState = GameRules.undo(gameState);
-            return newGameState.toPlain();
+
+            // Add undone move to redo stack
+            return {
+                ...newGameState.toPlain(),
+                redoStack: [...(state.redoStack || []), lastMove],
+            };
+        }
+
+        case ActionTypes.REDO_MOVE: {
+            const redoStack = state.redoStack || [];
+            if (redoStack.length === 0) {
+                return state; // Nothing to redo
+            }
+
+            // Get the last undone move
+            const moveToRedo = redoStack[redoStack.length - 1];
+
+            // Replay the move
+            const newGameState = GameRules.placeMarker(
+                gameState,
+                moveToRedo.position,
+                moveToRedo.player
+            );
+
+            // Remove from redo stack
+            return {
+                ...newGameState.toPlain(),
+                redoStack: redoStack.slice(0, -1),
+            };
         }
 
         case ActionTypes.UPDATE_SETTINGS: {
