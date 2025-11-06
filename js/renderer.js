@@ -237,12 +237,20 @@ export class GridRenderer {
     }
 
     /**
-     * Clear all markers from cells
+     * Clear all markers from cells and reset visual state
      * Delegates to MarkerRenderer
      */
     clearMarkers() {
         this.markerRenderer.clearAllMarkers(this.cells);
         this.clearPreviewSelection();
+
+        // Update cell appearances immediately to reflect cleared states
+        // MarkerRenderer sets temporary neutral colors, but we need W-based colors
+        this.updateCellPositions();
+
+        // Update connection lines immediately to reflect cleared cell states
+        // Without this, connection lines stay colored until next frame
+        this.updateConnectionLines();
     }
 
     /**
