@@ -206,7 +206,7 @@ class Game {
         const state = this.store.getState();
 
         // Clear renderer
-        this.renderer.clearAllMarkers();
+        this.renderer.markerRenderer.clearAllMarkers(this.renderer.cells);
         this.renderer.clearPreviewSelection();
 
         // Recreate grid with new dimensions
@@ -278,8 +278,9 @@ class Game {
             });
         }
 
-        // Render scene
-        this.renderer.render(this.rotations);
+        // Update renderer rotations and render
+        this.renderer.setRotations(this.rotations);
+        this.renderer.render();
     }
 }
 
