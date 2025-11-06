@@ -114,7 +114,9 @@ class Game {
         });
 
         this.eventBus.on('game:stateReset', () => {
-            // Just update UI - grid recreation is handled separately in handleSettingsChange
+            // Clear all markers from the grid
+            this.renderer.clearMarkers();
+            // Update UI status
             this.updateStatus();
         });
 
