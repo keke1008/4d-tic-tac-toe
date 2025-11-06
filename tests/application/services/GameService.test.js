@@ -75,7 +75,7 @@ describe('GameService', () => {
         });
     });
 
-    describe('resetGame', () => {
+    describe('resetGameState', () => {
         it('should reset game to initial state', () => {
             // Make some moves
             service.handleCellClick([0, 0, 0, 0]);
@@ -84,29 +84,28 @@ describe('GameService', () => {
             expect(service.getMoveHistory()).toHaveLength(1);
 
             // Reset
-            service.resetGame();
+            service.resetGameState();
 
             expect(service.getMoveHistory()).toHaveLength(0);
             expect(service.getCurrentPlayer()).toBe('X');
             expect(service.getGamePhase()).toBe('playing');
         });
 
-        it('should reset with new settings', () => {
-            const newSettings = { dimensions: 3, gridSize: 3 };
+        it('should keep current settings when resetting', () => {
+            // Settings should remain unchanged after reset
+            const settingsBefore = service.getSettings();
 
-            // Update settings first, then reset applies them
-            service.updateSettings(newSettings);
+            service.resetGameState();
 
-            const settings = service.getSettings();
-            expect(settings.dimensions).toBe(3);
-            expect(settings.gridSize).toBe(3);
+            const settingsAfter = service.getSettings();
+            expect(settingsAfter).toEqual(settingsBefore);
         });
 
-        it('should emit reset event', () => {
+        it('should emit state reset event', () => {
             const spy = vi.fn();
-            eventBus.on('game:reset', spy);
+            eventBus.on('game:stateReset', spy);
 
-            service.resetGame();
+            service.resetGameState();
 
             expect(spy).toHaveBeenCalled();
         });
@@ -123,14 +122,17 @@ describe('GameService', () => {
             expect(settings.gridSize).toBe(5);
         });
 
-        it('should emit settings updated event', () => {
+        it('should emit settings changed event with old and new settings', () => {
             const spy = vi.fn();
-            eventBus.on('settings:updated', spy);
+            eventBus.on('settings:changed', spy);
 
             const newSettings = { dimensions: 3, gridSize: 5 };
             service.updateSettings(newSettings);
 
-            expect(spy).toHaveBeenCalledWith({ settings: newSettings });
+            expect(spy).toHaveBeenCalledWith({
+                oldSettings: expect.objectContaining({ dimensions: 4, gridSize: 4 }),
+                newSettings
+            });
         });
     });
 
@@ -154,9 +156,9 @@ describe('GameService', () => {
             expect(service.getMoveHistory()).toHaveLength(0);
         });
 
-        it('should emit undo event', () => {
+        it('should emit move undone event', () => {
             const spy = vi.fn();
-            eventBus.on('game:undone', spy);
+            eventBus.on('game:moveUndone', spy);
 
             service.handleCellClick([0, 0, 0, 0]);
             service.handleCellClick([0, 0, 0, 0]); // Confirm
