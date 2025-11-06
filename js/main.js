@@ -205,17 +205,13 @@ class Game {
     reinitializeGame() {
         const state = this.store.getState();
 
-        // Clear renderer
-        this.renderer.markerRenderer.clearAllMarkers(this.renderer.cells);
-        this.renderer.clearPreviewSelection();
-
-        // Recreate grid with new dimensions
+        // Recreate grid with new dimensions (clears everything and rebuilds)
         this.renderer.recreateGrid(state.settings.dimensions, state.settings.gridSize);
 
-        // Reset rotations
+        // Reset rotations to match new dimensions
         this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
 
-        // Reset game through service
+        // Reset game state through service
         this.gameService.resetGame();
 
         // Update UI
