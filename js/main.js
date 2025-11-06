@@ -83,7 +83,8 @@ class Game {
             if (state.visual.previewCell) {
                 const cell = this.renderer.getCellByCoords(state.visual.previewCell);
                 if (cell) {
-                    this.renderer.setPreviewSelection(cell);
+                    // Pass current player to setPreviewSelection for correct preview color
+                    this.renderer.setPreviewSelection(cell, state.game.currentPlayer);
                 }
             } else {
                 this.renderer.clearPreviewSelection();
@@ -286,17 +287,14 @@ class Game {
      */
     updateStatus() {
         const state = this.store.getState();
-        let status;
 
         if (state.game.gamePhase === 'won') {
-            status = `プレイヤー ${state.game.winner} の勝利！`;
-            this.uiManager.showVictoryStatus(status);
+            this.uiManager.showVictoryStatus(`プレイヤー ${state.game.winner} の勝利！`);
         } else if (state.game.gamePhase === 'draw') {
-            status = '引き分け！';
-            this.uiManager.showVictoryStatus(status);
+            this.uiManager.showDrawStatus();
         } else {
-            status = `プレイヤー ${state.game.currentPlayer} のターン`;
-            this.uiManager.updateStatus(status);
+            // Pass currentPlayer (not full message) to updateStatus
+            this.uiManager.updateStatus(state.game.currentPlayer);
         }
 
         // Update undo/redo button states
