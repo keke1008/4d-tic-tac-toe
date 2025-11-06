@@ -59,19 +59,13 @@ export class ConnectionManager {
     /**
      * Update all connection lines based on current rotation
      * @param {Object} rotations - Rotation angles {xy, xz, xw, yz, yw, zw}
-     * @param {Array} cells - Array of cell objects (for determining line colors)
+     * @param {Array} cells - Array of cell objects (for geometry only)
      * @param {Object} hoveredCell - Currently hovered cell (optional)
      * @param {Object} previewCell - Currently previewed cell (optional)
      * @param {string} currentPlayer - Current player ('X' or 'O') for preview coloring
+     * @param {Map<string, {player: string}>} markerMap - Map of cell positions to marker info
      */
-    updateLines(rotations, cells = [], hoveredCell = null, previewCell = null, currentPlayer = 'X') {
-        // Build map of cell positions to cell objects for fast lookup
-        const cellMap = new Map();
-        cells.forEach(cell => {
-            const key = cell.posND.join(',');
-            cellMap.set(key, cell);
-        });
-
+    updateLines(rotations, cells = [], hoveredCell = null, previewCell = null, currentPlayer = 'X', markerMap = new Map()) {
         // Get position keys for hover and preview cells
         const hoveredKey = hoveredCell ? hoveredCell.posND.join(',') : null;
         const previewKey = previewCell ? previewCell.posND.join(',') : null;
@@ -79,11 +73,9 @@ export class ConnectionManager {
         this.connectionLines.forEach(line => {
             const { posND1, posND2 } = line.userData;
 
-            // Get cells at both endpoints
+            // Get position keys
             const key1 = posND1.join(',');
             const key2 = posND2.join(',');
-            const cell1 = cellMap.get(key1);
-            const cell2 = cellMap.get(key2);
 
             // Check hover and preview states
             const isHovered1 = key1 === hoveredKey;
@@ -109,11 +101,13 @@ export class ConnectionManager {
             positions[5] = z2;
             line.geometry.attributes.position.needsUpdate = true;
 
-            // Determine line color based on endpoint states
-            const selected1 = cell1?.isSelected || false;
-            const selected2 = cell2?.isSelected || false;
-            const player1 = cell1?.player;
-            const player2 = cell2?.player;
+            // Determine line color based on endpoint states using markerMap
+            const marker1 = markerMap.get(key1);
+            const marker2 = markerMap.get(key2);
+            const selected1 = marker1 !== undefined;
+            const selected2 = marker2 !== undefined;
+            const player1 = marker1?.player;
+            const player2 = marker2?.player;
 
             // Priority: Selected > Preview > Hover > Unselected
             if (selected1 && selected2) {
