@@ -73,7 +73,8 @@ export class StateStore {
 
     /**
      * Subscribe to state changes
-     * @param {Function} listener - Callback (newState, prevState, action) => void
+     * @param {Function} listener - Callback function that receives (newState, prevState, action).
+     *                              Most common usage: (state) => { ... } (other params optional)
      * @returns {Function} Unsubscribe function
      */
     subscribe(listener) {

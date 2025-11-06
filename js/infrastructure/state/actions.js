@@ -39,7 +39,7 @@ export const ActionTypes = {
 // Action creators - functions that create actions
 export const Actions = {
     // Game actions
-    placeMarker: (position, player) => ({
+    placeMarker: (position, player = null) => ({
         type: ActionTypes.PLACE_MARKER,
         payload: { position, player }
     }),
