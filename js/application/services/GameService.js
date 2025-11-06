@@ -49,55 +49,71 @@ export class GameService {
     }
 
     /**
-     * Reset game
-     * @param {Object} [newSettings] - Optional new settings
+     * Reset game state (clears markers, history, but keeps settings)
+     * This is a Command that changes state and emits completion event
      */
-    resetGame(newSettings = null) {
-        const settings = newSettings || this.store.getState().settings;
+    resetGameState() {
+        const settings = this.store.getState().settings;
         this.store.dispatch(Actions.resetGame(settings));
         this.store.dispatch(Actions.setPreviewCell(null));
 
-        // Emit event
-        this.eventBus.emit('game:reset', { settings });
+        // Emit event: notify that game state has been reset (past tense)
+        this.eventBus.emit('game:stateReset', { settings });
     }
 
     /**
-     * Update game settings
+     * Update game settings (dimensions, grid size, etc.)
+     * This is a Command that changes settings and emits completion event
      * @param {Object} newSettings - New settings
      */
     updateSettings(newSettings) {
+        const oldSettings = this.store.getState().settings;
+
+        // Update state
         this.store.dispatch(Actions.updateSettings(newSettings));
 
-        // Emit event
-        this.eventBus.emit('settings:updated', { settings: newSettings });
+        // Emit event: notify that settings have changed (past tense)
+        this.eventBus.emit('settings:changed', {
+            oldSettings,
+            newSettings
+        });
     }
 
     /**
      * Undo last move
+     * This is a Command that changes state and emits completion event
      */
     undo() {
         if (!this.canUndo()) {
             return;
         }
 
+        const state = this.store.getState();
+        const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
+
         this.store.dispatch(Actions.undoMove());
 
-        // Emit event
-        this.eventBus.emit('game:undone', {});
+        // Emit event: notify that move has been undone (past tense)
+        this.eventBus.emit('game:moveUndone', { move: lastMove });
     }
 
     /**
      * Redo last undone move
+     * This is a Command that changes state and emits completion event
      */
     redo() {
         if (!this.canRedo()) {
             return;
         }
 
+        const state = this.store.getState();
+        const redoStack = state.game.redoStack || [];
+        const moveToRedo = redoStack[redoStack.length - 1];
+
         this.store.dispatch(Actions.redoMove());
 
-        // Emit event
-        this.eventBus.emit('game:redone', {});
+        // Emit event: notify that move has been redone (past tense)
+        this.eventBus.emit('game:moveRedone', { move: moveToRedo });
     }
 
     /**

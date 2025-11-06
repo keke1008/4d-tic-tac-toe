@@ -102,7 +102,10 @@ class Game {
      * Setup event bus listeners
      */
     setupEventListeners() {
-        // Game events
+        // Game events - listen to completion notifications (past tense)
+        // These listeners perform side effects only (rendering, UI updates)
+        // They NEVER call Commands that could create circular dependencies
+
         this.eventBus.on('game:markerPlaced', ({ position, player }) => {
             const cell = this.renderer.getCellByCoords(position);
             if (cell) {
@@ -110,17 +113,29 @@ class Game {
             }
         });
 
-        this.eventBus.on('game:reset', () => {
-            this.reinitializeGame();
-        });
-
-        this.eventBus.on('game:redone', () => {
-            // Redo event - renderer update handled in handleRedo()
+        this.eventBus.on('game:stateReset', () => {
+            // Just update UI - grid recreation is handled separately in handleSettingsChange
             this.updateStatus();
         });
 
-        this.eventBus.on('settings:updated', ({ settings }) => {
-            this.rotations = RotationInitializer.createRotations(settings.dimensions);
+        this.eventBus.on('game:moveUndone', () => {
+            // Move removal is handled in handleUndo()
+            this.updateStatus();
+        });
+
+        this.eventBus.on('game:moveRedone', () => {
+            // Move addition is handled in handleRedo()
+            this.updateStatus();
+        });
+
+        this.eventBus.on('settings:changed', ({ newSettings }) => {
+            // Heavy operation: recreate grid with new settings
+            this.renderer.recreateGrid(
+                newSettings.dimensions,
+                newSettings.gridSize
+            );
+            // Update rotation axes for new dimensions
+            this.rotations = RotationInitializer.createRotations(newSettings.dimensions);
         });
 
         // Input controller events
@@ -241,30 +256,20 @@ class Game {
     }
 
     /**
-     * Handle settings change
+     * Handle settings change (called from SettingsModal)
+     * This orchestrates the full settings change flow:
+     * 1. Update settings → triggers 'settings:changed' event → grid recreation
+     * 2. Reset game state → triggers 'game:stateReset' event → UI update
      */
     handleSettingsChange(dimensions, gridSize) {
+        // Update settings (triggers 'settings:changed' which recreates grid)
         this.gameService.updateSettings({ dimensions, gridSize });
-        this.reinitializeGame();
-    }
 
-    /**
-     * Reinitialize game with current settings
-     */
-    reinitializeGame() {
-        const state = this.store.getState();
+        // Reset game state (triggers 'game:stateReset' which updates UI)
+        this.gameService.resetGameState();
 
-        // Recreate grid with new dimensions (clears everything and rebuilds)
-        this.renderer.recreateGrid(state.settings.dimensions, state.settings.gridSize);
-
-        // Reset rotations to match new dimensions
-        this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
-
-        // Reset game state through service
-        this.gameService.resetGame();
-
-        // Update UI
-        this.updateStatus();
+        // Note: Grid recreation and UI updates are handled by event listeners
+        // This prevents circular dependencies and keeps the flow one-directional
     }
 
     /**
