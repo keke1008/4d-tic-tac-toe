@@ -77,20 +77,6 @@ class Game {
         // Update UI status
         this.updateStatus();
 
-        // Sync visual state to renderer
-        if (state.visual.previewCell !== this._lastPreviewCell) {
-            this._lastPreviewCell = state.visual.previewCell;
-            if (state.visual.previewCell) {
-                const cell = this.renderer.getCellByCoords(state.visual.previewCell);
-                if (cell) {
-                    // Pass current player to setPreviewSelection for correct preview color
-                    this.renderer.setPreviewSelection(cell, state.game.currentPlayer);
-                }
-            } else {
-                this.renderer.clearPreviewSelection();
-            }
-        }
-
         // Update auto-rotate button
         if (state.visual.autoRotate !== this._lastAutoRotate) {
             this._lastAutoRotate = state.visual.autoRotate;
@@ -266,7 +252,6 @@ class Game {
      */
     setupLegacyIntegration() {
         // Store last values to detect changes
-        this._lastPreviewCell = null;
         this._lastAutoRotate = true;
     }
 

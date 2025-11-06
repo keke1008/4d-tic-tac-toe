@@ -13,14 +13,15 @@ export class CellAppearanceManager {
      * @param {number} w - W coordinate (for depth-based coloring)
      * @param {boolean} isHovered - Whether cell is hovered
      * @param {boolean} isPreview - Whether cell is in preview state
+     * @param {string} currentPlayer - Current player ('X' or 'O'), used for preview color
      */
-    updateCellAppearance(cell, w, isHovered, isPreview) {
+    updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer = 'X') {
         if (cell.marker) {
             // Fully selected: player color with high opacity (set by MarkerRenderer)
             this.applySelectedAppearance(cell);
         } else if (isPreview) {
             // Preview selection: show player color at reduced opacity
-            this.applyPreviewAppearance(cell);
+            this.applyPreviewAppearance(cell, currentPlayer);
         } else {
             // Unselected: W-based color for depth visualization
             this.applyUnselectedAppearance(cell, w, isHovered);
@@ -40,9 +41,9 @@ export class CellAppearanceManager {
     /**
      * Apply appearance for preview cells
      * @param {Object} cell - Cell object
+     * @param {string} currentPlayer - Current player ('X' or 'O')
      */
-    applyPreviewAppearance(cell) {
-        const currentPlayer = cell.previewPlayer || 'X';
+    applyPreviewAppearance(cell, currentPlayer = 'X') {
         const color = currentPlayer === 'X' ? CONFIG.PLAYER_X_COLOR : CONFIG.PLAYER_O_COLOR;
 
         cell.wireframe.material.color.setHex(color);

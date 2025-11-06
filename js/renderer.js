@@ -23,9 +23,6 @@ export class GridRenderer {
         this.dimensions = CONFIG.DIMENSIONS || 4;
         this.rotations = RotationInitializer.createRotations(this.dimensions);
 
-        // Preview state (still kept locally for now, will be migrated in Phase 3)
-        this.previewCell = null;
-
         // Initialize renderers and managers
         this.markerRenderer = new MarkerRenderer();
         this.appearanceManager = new CellAppearanceManager();
@@ -189,13 +186,23 @@ export class GridRenderer {
      * Update all cell positions and appearance based on current rotation
      */
     updateCellPositions() {
-        // Get hovered cell from store
+        // Get hovered and preview cells from store
         let hoveredCell = null;
+        let previewCell = null;
+        let currentPlayer = 'X';
+
         if (this.store) {
-            const hoveredCoords = this.store.getState().visual.hoveredCell;
-            if (hoveredCoords) {
-                hoveredCell = this.getCellByCoords(hoveredCoords);
+            const state = this.store.getState();
+
+            if (state.visual.hoveredCell) {
+                hoveredCell = this.getCellByCoords(state.visual.hoveredCell);
             }
+
+            if (state.visual.previewCell) {
+                previewCell = this.getCellByCoords(state.visual.previewCell);
+            }
+
+            currentPlayer = state.game.currentPlayer;
         }
 
         this.cells.forEach(cell => {
@@ -211,8 +218,8 @@ export class GridRenderer {
 
             // Update appearance (delegates to CellAppearanceManager)
             const isHovered = cell === hoveredCell;
-            const isPreview = cell === this.previewCell;
-            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview);
+            const isPreview = cell === previewCell;
+            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer);
         });
     }
 
@@ -221,12 +228,18 @@ export class GridRenderer {
      * Delegates to ConnectionManager
      */
     updateConnectionLines() {
-        // Get hovered cell from store
+        // Get hovered and preview cells from store
         let hoveredCell = null;
+        let previewCell = null;
         if (this.store) {
-            const hoveredCoords = this.store.getState().visual.hoveredCell;
-            if (hoveredCoords) {
-                hoveredCell = this.getCellByCoords(hoveredCoords);
+            const state = this.store.getState().visual;
+
+            if (state.hoveredCell) {
+                hoveredCell = this.getCellByCoords(state.hoveredCell);
+            }
+
+            if (state.previewCell) {
+                previewCell = this.getCellByCoords(state.previewCell);
             }
         }
 
@@ -234,7 +247,7 @@ export class GridRenderer {
             this.rotations,
             this.cells,
             hoveredCell,
-            this.previewCell
+            previewCell
         );
     }
 
@@ -269,12 +282,15 @@ export class GridRenderer {
     /**
      * Set preview selection for a cell
      * @param {Object} cell - Cell to preview
-     * @param {string} player - Player ('X' or 'O')
+     * @param {string} player - Player ('X' or 'O') - deprecated parameter, player is now read from store
      */
     setPreviewSelection(cell, player) {
-        this.previewCell = cell;
-        if (cell) {
-            cell.previewPlayer = player;
+        if (this.store) {
+            const position = cell ? cell.coordsArray : null;
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position }
+            });
         }
     }
 
@@ -282,10 +298,12 @@ export class GridRenderer {
      * Clear preview selection
      */
     clearPreviewSelection() {
-        if (this.previewCell) {
-            this.previewCell.previewPlayer = null;
+        if (this.store) {
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position: null }
+            });
         }
-        this.previewCell = null;
     }
 
     /**
@@ -293,7 +311,13 @@ export class GridRenderer {
      * @returns {Object|null}
      */
     getPreviewCell() {
-        return this.previewCell;
+        if (this.store) {
+            const previewCoords = this.store.getState().visual.previewCell;
+            if (previewCoords) {
+                return this.getCellByCoords(previewCoords);
+            }
+        }
+        return null;
     }
 
     /**
@@ -483,15 +507,16 @@ export class GridRenderer {
         this.createGrid();
         this.createGridConnections();
 
-        // Reset hover state in store
+        // Reset hover and preview states in store
         if (this.store) {
             this.store.dispatch({
                 type: 'SET_HOVERED_CELL',
                 payload: { position: null }
             });
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position: null }
+            });
         }
-
-        // Reset preview state (still local for now)
-        this.previewCell = null;
     }
 }
