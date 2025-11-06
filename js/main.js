@@ -32,7 +32,7 @@ class Game {
 
         // === Legacy Components ===
         const container = document.getElementById('canvas-container');
-        this.renderer = new GridRenderer(container);
+        this.renderer = new GridRenderer(container, this.store);
 
         // Input controller with new architecture integration
         this.inputController = new InputController(
@@ -46,17 +46,12 @@ class Game {
             this.handleSettingsChange(dims, gridSize);
         });
 
-        // Initialize rotations based on state
-        const state = this.store.getState();
-        this.rotations = RotationInitializer.createRotations(state.settings.dimensions);
-
         // === Setup ===
         this.setupStateSubscription();
         this.setupEventListeners();
         this.setupLegacyIntegration();
 
-        // Initial sync
-        this.syncStateToRenderer();
+        // Initial sync (markers are automatically rendered from moveHistory in render loop)
         this.updateStatus();
         this.animate();
     }
@@ -76,20 +71,6 @@ class Game {
     onStateChange(state) {
         // Update UI status
         this.updateStatus();
-
-        // Sync visual state to renderer
-        if (state.visual.previewCell !== this._lastPreviewCell) {
-            this._lastPreviewCell = state.visual.previewCell;
-            if (state.visual.previewCell) {
-                const cell = this.renderer.getCellByCoords(state.visual.previewCell);
-                if (cell) {
-                    // Pass current player to setPreviewSelection for correct preview color
-                    this.renderer.setPreviewSelection(cell, state.game.currentPlayer);
-                }
-            } else {
-                this.renderer.clearPreviewSelection();
-            }
-        }
 
         // Update auto-rotate button
         if (state.visual.autoRotate !== this._lastAutoRotate) {
@@ -117,16 +98,14 @@ class Game {
          * - currentPlayer switched
          *
          * Responsibility:
-         * - Render marker on the grid
+         * - None (markers now rendered automatically from moveHistory in render loop)
          *
          * Postcondition:
-         * - Marker visible on renderer at specified position
+         * - Marker automatically visible on next frame via updateCellPositions()
          */
         this.eventBus.on('game:markerPlaced', ({ position, player }) => {
-            const cell = this.renderer.getCellByCoords(position);
-            if (cell) {
-                this.renderer.createMarker(cell, player);
-            }
+            // Markers are now automatically rendered from state.game.moveHistory
+            // No manual renderer manipulation needed
         });
 
         /**
@@ -140,16 +119,14 @@ class Game {
          * - previewCell = null
          *
          * Responsibility:
-         * - Clear all markers from renderer
          * - Update UI status to initial state
          *
          * Postcondition:
-         * - All markers cleared from grid
+         * - Markers automatically cleared on next frame (moveHistory is empty)
          * - UI shows "Player X's turn"
          */
         this.eventBus.on('game:stateReset', () => {
-            // Clear all markers from the grid
-            this.renderer.clearMarkers();
+            // Markers are automatically cleared when moveHistory is empty
             // Update UI status
             this.updateStatus();
         });
@@ -206,11 +183,10 @@ class Game {
          *
          * Responsibility:
          * - Recreate grid with new dimensions/gridSize
-         * - Update rotation axes for new dimensions
          *
          * Postcondition:
          * - Grid recreated with new settings
-         * - Rotation axes updated
+         * - Rotation axes updated in StateStore by visualReducer
          */
         this.eventBus.on('settings:changed', ({ newSettings }) => {
             // Heavy operation: recreate grid with new settings
@@ -218,15 +194,12 @@ class Game {
                 newSettings.dimensions,
                 newSettings.gridSize
             );
-            // Update rotation axes for new dimensions
-            this.rotations = RotationInitializer.createRotations(newSettings.dimensions);
         });
 
         // Input controller events
         this.inputController.addEventListener('rotate', (e) => {
             const { axis, delta } = e.detail;
             this.gameService.updateRotation(axis, delta);
-            this.rotations[axis] += delta;
         });
 
         this.inputController.addEventListener('cellClick', (e) => {
@@ -266,7 +239,6 @@ class Game {
      */
     setupLegacyIntegration() {
         // Store last values to detect changes
-        this._lastPreviewCell = null;
         this._lastAutoRotate = true;
     }
 
@@ -292,24 +264,12 @@ class Game {
      * Handle undo button
      */
     handleUndo() {
-        const state = this.store.getState();
-
         if (!this.gameService.canUndo()) return;
-
-        // Get the last move before undo
-        const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
 
         // Undo in game service
         this.gameService.undo();
 
-        // Remove marker from renderer
-        if (lastMove) {
-            const cell = this.renderer.getCellByCoords(lastMove.position);
-            if (cell) {
-                this.renderer.removeMarker(cell);
-            }
-        }
-
+        // Marker is automatically removed on next frame (moveHistory updated)
         this.updateStatus();
     }
 
@@ -317,25 +277,12 @@ class Game {
      * Handle redo button
      */
     handleRedo() {
-        const state = this.store.getState();
-
         if (!this.gameService.canRedo()) return;
-
-        // Get the move to redo
-        const redoStack = state.game.redoStack || [];
-        const moveToRedo = redoStack[redoStack.length - 1];
 
         // Redo in game service
         this.gameService.redo();
 
-        // Add marker back to renderer
-        if (moveToRedo) {
-            const cell = this.renderer.getCellByCoords(moveToRedo.position);
-            if (cell) {
-                this.renderer.createMarker(cell, moveToRedo.player);
-            }
-        }
-
+        // Marker is automatically added back on next frame (moveHistory updated)
         this.updateStatus();
     }
 
@@ -389,20 +336,8 @@ class Game {
         // This prevents circular dependencies and keeps the flow one-directional
     }
 
-    /**
-     * Sync current state to renderer
-     */
-    syncStateToRenderer() {
-        const state = this.store.getState();
-
-        // Sync all placed markers
-        state.game.moveHistory.forEach(move => {
-            const cell = this.renderer.getCellByCoords(move.position);
-            if (cell) {
-                this.renderer.createMarker(cell, move.player);
-            }
-        });
-    }
+    // syncStateToRenderer() removed - markers are now automatically rendered
+    // from state.game.moveHistory in the render loop via updateCellPositions()
 
     /**
      * Update status display
@@ -442,13 +377,14 @@ class Game {
         // Auto-rotate if enabled
         if (state.visual.autoRotate) {
             const rotationSpeed = 0.005;
-            Object.keys(this.rotations).forEach(axis => {
-                this.rotations[axis] += rotationSpeed;
+            const rotations = state.visual.rotation;
+            Object.keys(rotations).forEach(axis => {
+                this.gameService.updateRotation(axis, rotationSpeed);
             });
         }
 
-        // Update renderer rotations and render
-        this.renderer.setRotations(this.rotations);
+        // Update renderer rotations from store and render
+        this.renderer.setRotations(state.visual.rotation);
         this.renderer.render();
     }
 }

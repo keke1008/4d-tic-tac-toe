@@ -5,6 +5,7 @@
 import { ActionTypes } from './actions.js';
 import { GameRules } from '../../domain/rules/GameRules.js';
 import { GameState } from '../../domain/state/GameState.js';
+import { RotationInitializer } from '../../game/RotationInitializer.js';
 
 // Initial game settings
 const defaultSettings = {
@@ -20,7 +21,7 @@ export const initialState = {
     },
     settings: defaultSettings,
     visual: {
-        rotation: {},  // { xy: 0, xz: 0, ... }
+        rotation: RotationInitializer.createRotations(defaultSettings.dimensions),
         cameraPosition: { x: 0, y: 0, z: 12 },
         cameraDistance: 12,
         hoveredCell: null,
@@ -240,6 +241,17 @@ function visualReducer(state = initialState.visual, action, rootState) {
                 ...state,
                 autoRotate: action.payload.enabled
             };
+
+        case ActionTypes.UPDATE_SETTINGS:
+            // When dimensions change, reinitialize rotation axes
+            const newDimensions = action.payload.settings.dimensions;
+            if (newDimensions !== undefined && newDimensions !== rootState.settings.dimensions) {
+                return {
+                    ...state,
+                    rotation: RotationInitializer.createRotations(newDimensions)
+                };
+            }
+            return state;
 
         default:
             return state;

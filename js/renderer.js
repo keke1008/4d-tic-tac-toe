@@ -7,14 +7,14 @@ import { rotate4D, project4Dto3D, getScaleFromW } from './mathnd.js';
 import { RotationInitializer } from './game/RotationInitializer.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { CameraController } from './rendering/CameraController.js';
-import { MarkerRenderer } from './rendering/MarkerRenderer.js';
 import { CellAppearanceManager } from './rendering/CellAppearanceManager.js';
 import { GridBuilder } from './grid/GridBuilder.js';
 import { ConnectionManager } from './grid/ConnectionManager.js';
 
 export class GridRenderer {
-    constructor(container) {
+    constructor(container, store = null) {
         this.container = container;
+        this.store = store; // Store reference for state management
         this.cells = [];
         this.cellMeshes = [];
 
@@ -22,12 +22,7 @@ export class GridRenderer {
         this.dimensions = CONFIG.DIMENSIONS || 4;
         this.rotations = RotationInitializer.createRotations(this.dimensions);
 
-        // Hover and preview state
-        this.hoveredCell = null;
-        this.previewCell = null;
-
-        // Initialize renderers and managers
-        this.markerRenderer = new MarkerRenderer();
+        // Initialize appearance manager
         this.appearanceManager = new CellAppearanceManager();
 
         this.setupThreeJS();
@@ -57,8 +52,16 @@ export class GridRenderer {
      * Create the 4D grid cells
      */
     createGrid() {
+        // Get settings from store if available, otherwise use instance dimensions
+        const dimensions = this.store
+            ? this.store.getState().settings.dimensions
+            : this.dimensions;
+        const gridSize = this.store
+            ? this.store.getState().settings.gridSize
+            : CONFIG.GRID_SIZE;
+
         // Use GridBuilder to generate cell data
-        const gridBuilder = new GridBuilder();
+        const gridBuilder = new GridBuilder({ dimensions, gridSize });
         this.cells = gridBuilder.generateCells();
 
         // Create Three.js meshes for each cell
@@ -82,16 +85,66 @@ export class GridRenderer {
 
             const cell = this.getCellAtMouse(mouseX, mouseY);
 
-            // Update hovered cell
-            if (cell !== this.hoveredCell) {
-                this.hoveredCell = cell;
+            // Update hovered cell in store if store is available
+            if (this.store) {
+                const currentHoveredCell = this.store.getState().visual.hoveredCell;
+                const newHoveredCell = cell ? cell.coordsArray : null;
+
+                // Only dispatch if changed (compare arrays)
+                const hasChanged = !this._areCoordsEqual(currentHoveredCell, newHoveredCell);
+                if (hasChanged) {
+                    this.store.dispatch({
+                        type: 'SET_HOVERED_CELL',
+                        payload: { position: newHoveredCell }
+                    });
+                }
             }
         });
 
         // Clear hover when mouse leaves canvas
         canvas.addEventListener('mouseleave', () => {
-            this.hoveredCell = null;
+            if (this.store) {
+                this.store.dispatch({
+                    type: 'SET_HOVERED_CELL',
+                    payload: { position: null }
+                });
+            }
         });
+    }
+
+    /**
+     * Helper to compare coordinate arrays
+     * @private
+     */
+    _areCoordsEqual(coords1, coords2) {
+        if (coords1 === null && coords2 === null) return true;
+        if (coords1 === null || coords2 === null) return false;
+        if (coords1.length !== coords2.length) return false;
+        return coords1.every((val, i) => val === coords2[i]);
+    }
+
+    /**
+     * Get marker state for a cell from move history
+     * @param {Array<number>} position - Cell position coordinates
+     * @param {Array} moveHistory - Move history from state
+     * @returns {{ hasMarker: boolean, player: string|null }} Marker state
+     * @private
+     */
+    _getCellMarkerFromHistory(position, moveHistory) {
+        if (!moveHistory || moveHistory.length === 0) {
+            return { hasMarker: false, player: null };
+        }
+
+        // Find if this position exists in move history
+        const move = moveHistory.find(m =>
+            this._areCoordsEqual(m.position, position)
+        );
+
+        if (move) {
+            return { hasMarker: true, player: move.player };
+        }
+
+        return { hasMarker: false, player: null };
     }
 
     /**
@@ -134,8 +187,16 @@ export class GridRenderer {
      * Create connection lines between cells in all 4 axes
      */
     createGridConnections() {
+        // Get settings from store if available, otherwise use instance dimensions
+        const dimensions = this.store
+            ? this.store.getState().settings.dimensions
+            : this.dimensions;
+        const gridSize = this.store
+            ? this.store.getState().settings.gridSize
+            : CONFIG.GRID_SIZE;
+
         // Use GridBuilder to generate connection data
-        const gridBuilder = new GridBuilder();
+        const gridBuilder = new GridBuilder({ dimensions, gridSize });
         const connections = gridBuilder.generateConnections();
 
         // Use ConnectionManager to create line objects
@@ -147,6 +208,27 @@ export class GridRenderer {
      * Update all cell positions and appearance based on current rotation
      */
     updateCellPositions() {
+        // Get visual state and move history from store
+        let hoveredCell = null;
+        let previewCell = null;
+        let currentPlayer = 'X';
+        let moveHistory = [];
+
+        if (this.store) {
+            const state = this.store.getState();
+
+            if (state.visual.hoveredCell) {
+                hoveredCell = this.getCellByCoords(state.visual.hoveredCell);
+            }
+
+            if (state.visual.previewCell) {
+                previewCell = this.getCellByCoords(state.visual.previewCell);
+            }
+
+            currentPlayer = state.game.currentPlayer;
+            moveHistory = state.game.moveHistory || [];
+        }
+
         this.cells.forEach(cell => {
             const rotated = rotate4D(cell.posND, this.rotations);
             const [x, y, z, w] = project4Dto3D(rotated);
@@ -158,10 +240,13 @@ export class GridRenderer {
             const scale = getScaleFromW(w);
             cell.group.scale.setScalar(scale);
 
+            // Get marker state from move history
+            const { hasMarker, player: markerPlayer } = this._getCellMarkerFromHistory(cell.coordsArray, moveHistory);
+
             // Update appearance (delegates to CellAppearanceManager)
-            const isHovered = cell === this.hoveredCell;
-            const isPreview = cell === this.previewCell;
-            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview);
+            const isHovered = cell === hoveredCell;
+            const isPreview = cell === previewCell;
+            this.appearanceManager.updateCellAppearance(cell, w, isHovered, isPreview, currentPlayer, hasMarker, markerPlayer);
         });
     }
 
@@ -170,22 +255,27 @@ export class GridRenderer {
      * Delegates to ConnectionManager
      */
     updateConnectionLines() {
+        // Get hovered and preview cells from store
+        let hoveredCell = null;
+        let previewCell = null;
+        if (this.store) {
+            const state = this.store.getState().visual;
+
+            if (state.hoveredCell) {
+                hoveredCell = this.getCellByCoords(state.hoveredCell);
+            }
+
+            if (state.previewCell) {
+                previewCell = this.getCellByCoords(state.previewCell);
+            }
+        }
+
         this.connectionManager.updateLines(
             this.rotations,
             this.cells,
-            this.hoveredCell,
-            this.previewCell
+            hoveredCell,
+            previewCell
         );
-    }
-
-    /**
-     * Create a marker (X or O) on a cell
-     * Delegates to MarkerRenderer
-     * @param {Object} cell - Cell object
-     * @param {string} player - 'X' or 'O'
-     */
-    createMarker(cell, player) {
-        this.markerRenderer.createMarker(cell, player);
     }
 
     /**
@@ -209,12 +299,15 @@ export class GridRenderer {
     /**
      * Set preview selection for a cell
      * @param {Object} cell - Cell to preview
-     * @param {string} player - Player ('X' or 'O')
+     * @param {string} player - Player ('X' or 'O') - deprecated parameter, player is now read from store
      */
     setPreviewSelection(cell, player) {
-        this.previewCell = cell;
-        if (cell) {
-            cell.previewPlayer = player;
+        if (this.store) {
+            const position = cell ? cell.coordsArray : null;
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position }
+            });
         }
     }
 
@@ -222,10 +315,12 @@ export class GridRenderer {
      * Clear preview selection
      */
     clearPreviewSelection() {
-        if (this.previewCell) {
-            this.previewCell.previewPlayer = null;
+        if (this.store) {
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position: null }
+            });
         }
-        this.previewCell = null;
     }
 
     /**
@@ -233,25 +328,15 @@ export class GridRenderer {
      * @returns {Object|null}
      */
     getPreviewCell() {
-        return this.previewCell;
+        if (this.store) {
+            const previewCoords = this.store.getState().visual.previewCell;
+            if (previewCoords) {
+                return this.getCellByCoords(previewCoords);
+            }
+        }
+        return null;
     }
 
-    /**
-     * Clear all markers from cells and reset visual state
-     * Delegates to MarkerRenderer
-     */
-    clearMarkers() {
-        this.markerRenderer.clearAllMarkers(this.cells);
-        this.clearPreviewSelection();
-
-        // Update cell appearances immediately to reflect cleared states
-        // MarkerRenderer sets temporary neutral colors, but we need W-based colors
-        this.updateCellPositions();
-
-        // Update connection lines immediately to reflect cleared cell states
-        // Without this, connection lines stay colored until next frame
-        this.updateConnectionLines();
-    }
 
     /**
      * Update rotation angles
@@ -331,9 +416,6 @@ export class GridRenderer {
      * Dispose of all Three.js resources
      */
     dispose() {
-        // Clear markers
-        this.markerRenderer.clearAllMarkers(this.cells);
-
         // Dispose connection manager
         if (this.connectionManager) {
             this.connectionManager.dispose();
@@ -383,15 +465,6 @@ export class GridRenderer {
     }
 
     /**
-     * Remove marker from cell (adapter for new architecture)
-     * @param {Object} cell - Cell object
-     */
-    removeMarker(cell) {
-        if (!cell) return;
-        this.markerRenderer.clearMarkerFromCell(cell);
-    }
-
-    /**
      * Recreate grid with new dimensions (adapter for new architecture)
      * @param {number} dimensions - Number of dimensions
      * @param {number} gridSize - Grid size
@@ -413,10 +486,8 @@ export class GridRenderer {
         this.cells = [];
         this.cellMeshes = [];
 
-        // Update dimensions
+        // Update dimensions (CONFIG is now read-only, dimensions come from StateStore)
         this.dimensions = dimensions;
-        CONFIG.DIMENSIONS = dimensions;
-        CONFIG.GRID_SIZE = gridSize;
 
         // Reinitialize rotations
         this.rotations = RotationInitializer.createRotations(dimensions);
@@ -425,8 +496,16 @@ export class GridRenderer {
         this.createGrid();
         this.createGridConnections();
 
-        // Reset hover state
-        this.hoveredCell = null;
-        this.previewCell = null;
+        // Reset hover and preview states in store
+        if (this.store) {
+            this.store.dispatch({
+                type: 'SET_HOVERED_CELL',
+                payload: { position: null }
+            });
+            this.store.dispatch({
+                type: 'SET_PREVIEW_CELL',
+                payload: { position: null }
+            });
+        }
     }
 }
