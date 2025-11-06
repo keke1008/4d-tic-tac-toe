@@ -70,6 +70,9 @@
 
 **リスナー責務**（in main.js）：
 - レンダラーの全マーカーをクリア（`renderer.clearMarkers()`）
+  - セルのマーカーフラグをクリア（marker, isSelected, player）
+  - セルの色をW座標ベースの深度視覚化色にリセット（`updateCellPositions()`を内部で呼ぶ）
+  - 接続線の色をデフォルトにリセット（`updateConnectionLines()`を内部で呼ぶ）
 - UIステータスを更新（`updateStatus()`）
 - 他のCommandを呼ばない
 
